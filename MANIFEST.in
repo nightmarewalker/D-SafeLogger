@@ -1,0 +1,60 @@
+include LICENSE
+include README.md
+include README_ja.md
+include CHANGELOG.md
+include TESTING.md
+include CONTRIBUTING.md
+include SECURITY.md
+include BENCHMARK.md
+include pyproject.toml
+include uv.lock
+
+graft docs
+graft examples
+graft tests
+graft benchmarks/summary
+
+# Summary regeneration/check scripts required for verifying selected summaries
+# from the sdist without the full benchmark runner set.
+include benchmarks/_benchmark_report.py
+include benchmarks/update_summary.py
+
+# Selected-session raw summaries referenced by benchmarks/summary/manifest.json.
+# Required for `python benchmarks/update_summary.py --check` to pass from sdist.
+include benchmarks/results/benchmark_20260506_180018/summary.json
+include benchmarks/results/benchmark_20260506_180018/summary.md
+include benchmarks/results/benchmarks_multi_integ_20260506_185947/summary.json
+include benchmarks/results/benchmarks_multi_integ_20260506_185947/summary.md
+include benchmarks/results/benchmarks_multi_perf_20260506_190518/summary.json
+include benchmarks/results/benchmarks_multi_perf_20260506_190518/summary.md
+include benchmarks/results/benchmarks_multi_resilience_20260506_211129/summary.json
+include benchmarks/results/benchmarks_multi_resilience_20260506_211129/summary.md
+
+prune .claude
+prune .github
+prune .pytest_cache
+prune .ruff_cache
+prune .venv
+prune .venv_311
+prune .verify_task
+prune _examples_extracted
+prune _src_extracted
+prune _tests_extracted
+prune build
+prune dist
+prune docs/design/old
+prune plan
+prune tests/__pycache__
+
+exclude App.log
+exclude BENCHMARK_anomaly_*.md
+exclude BENCHMARK_legacy_*.md
+exclude _gen_api_docs.py
+exclude *.zip
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.pyc.*
+global-exclude .DS_Store
+global-exclude Thumbs.db
+global-exclude .coverage
+global-exclude coverage.xml

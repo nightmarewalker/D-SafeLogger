@@ -1,0 +1,109 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "D-SafeLogger"
+version = "0.2.0"
+description = "Zero-dependency, thread-safe, append-only logging library for Python with 3-layer config pipeline"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: System :: Logging",
+    "Operating System :: OS Independent",
+    "Typing :: Typed",
+]
+keywords = [
+    "logging", "logger", "thread-safe", "append-only", "zero-dependency",
+    "structured-logging", "json-lines", "file-rotation", "routing",
+    "sha256", "integrity", "cli",
+]
+dependencies = []
+
+authors = [{name = "D"}]
+
+[project.urls]
+Homepage = "https://github.com/nightmarewalker/D-SafeLogger"
+Repository = "https://github.com/nightmarewalker/D-SafeLogger"
+Documentation = "https://github.com/nightmarewalker/D-SafeLogger#readme"
+"Bug Tracker" = "https://github.com/nightmarewalker/D-SafeLogger/issues"
+
+[project.scripts]
+dsafelogger = "dsafelogger._cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["dsafelogger*"]
+
+[tool.setuptools.package-data]
+dsafelogger = ["py.typed"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0",
+    "pytest-asyncio>=0.24",
+    "pytest-timeout>=2.3",
+    "pytest-cov>=6.0",
+    "opentelemetry-api>=1.40",
+    "opentelemetry-sdk>=1.40",
+    "opentelemetry-instrumentation-logging>=0.61b0",
+    "structlog>=24.0",
+]
+benchmark = [
+    "loguru>=0.7",
+    "structlog>=24.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-v --tb=short"
+markers = [
+    "timeout: fail tests that exceed the configured runtime limit",
+    "optional_integration: integration tests requiring dev dependency group packages",
+]
+
+[tool.coverage.run]
+source = ["dsafelogger"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line-too-long (handled by formatter)
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+warn_unused_ignores = true
+warn_return_any = true
+disallow_untyped_defs = true
+ignore_missing_imports = true

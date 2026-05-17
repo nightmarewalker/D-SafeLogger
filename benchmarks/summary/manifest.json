@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "selected": {
+    "single_process": "benchmark_20260506_180018",
+    "multiprocess_integrity": "benchmarks_multi_integ_20260506_185947",
+    "multiprocess_performance": "benchmarks_multi_perf_20260506_190518",
+    "multiprocess_resilience": "benchmarks_multi_resilience_20260506_211129"
+  }
+}

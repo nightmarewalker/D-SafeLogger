@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+# PEP 503 normalized form of distribution name "D-SafeLogger"
+d_safelogger-*/
+*.whl
+*.zip
+_*_extracted/
+_gen_api_docs.py
+
+# Virtual environments
+.venv/
+.venv_311/
+venv/
+ENV/
+
+# IDE
+.claude/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Testing and local coverage artifacts
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# UV
+.python-version
+
+# Logs (generated during testing)
+*.log
+logs/
+
+# Private planning notes
+plan/
+.verify_task/
+.verify_artifact/
+.verify_pypi/
+
+# Local benchmark review snapshots
+for_chat/
+benchmarks/tmp/
+BENCHMARK_anomaly_*.md
+BENCHMARK_legacy_*.md
+old/
+docs/design/old/

@@ -1,8 +1,8 @@
 # D-SafeLogger
 
 [![CI](https://github.com/nightmarewalker/D-SafeLogger/actions/workflows/ci.yml/badge.svg)](https://github.com/nightmarewalker/D-SafeLogger/actions/workflows/ci.yml)
-[![PyPI version](https://img.shields.io/pypi/v/d-safelogger.svg)](https://pypi.org/project/d-safelogger/)
-[![Python](https://img.shields.io/pypi/pyversions/d-safelogger.svg)](https://pypi.org/project/d-safelogger/)
+[![PyPI version](https://img.shields.io/pypi/v/d-safelogger.svg?cacheSeconds=3600)](https://pypi.org/project/d-safelogger/)
+[![Python](https://img.shields.io/pypi/pyversions/d-safelogger.svg?cacheSeconds=3600)](https://pypi.org/project/d-safelogger/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-zero-brightgreen.svg)](#main-features)
 

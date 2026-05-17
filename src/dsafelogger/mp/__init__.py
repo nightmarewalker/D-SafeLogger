@@ -764,7 +764,13 @@ def ConfigureLogger(
         # implementation auto-detects native support and only pays the
         # Value-counter overhead on unsupported platforms.
         ipc_mp_ctx = _resolve_mp_context(mp_context)
-        log_queue = TrackedQueue(maxsize=resolved_log_queue_maxsize, ctx=ipc_mp_ctx)
+        try:
+            log_queue = TrackedQueue(maxsize=resolved_log_queue_maxsize, ctx=ipc_mp_ctx)
+        except OSError as exc:
+            raise ValueError(
+                f'ipc_log_queue_maxsize {resolved_log_queue_maxsize} is not supported '
+                f'by multiprocessing context {ipc_mp_ctx.get_start_method()!r}'
+            ) from exc
         control_queue = ipc_mp_ctx.Queue(maxsize=_CONTROL_QUEUE_MAXSIZE)
 
         # ── Build BootstrapContext ────────────────────────────────────────────

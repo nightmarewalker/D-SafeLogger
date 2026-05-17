@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 import threading
 
 import pytest
@@ -237,7 +238,16 @@ class TestQueueMaxsizeConfig:
         assert ctx.ipc_client_queue_maxsize == 300
 
     def test_large_log_queue_maxsize_warns(self, tmp_path, mp_state, capsys):
-        """ipc_log_queue_maxsize > 100000 warns but remains allowed (v23c)."""
+        """ipc_log_queue_maxsize > 100000 warns; OS semaphore limits may reject it."""
+        if sys.platform == 'darwin':
+            with pytest.raises(ValueError, match='ipc_log_queue_maxsize'):
+                mp.ConfigureLogger(
+                    log_path=str(tmp_path), console_out=False,
+                    ipc_log_queue_maxsize=100_001,
+                )
+            assert 'ipc_log_queue_maxsize' in capsys.readouterr().err
+            return
+
         ctx = mp.ConfigureLogger(
             log_path=str(tmp_path), console_out=False,
             ipc_log_queue_maxsize=100_001,

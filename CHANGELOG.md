@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `file_fmt` and `console_fmt` are now accepted by the single-process API and INI/config_dict loader, matching the public design docs.
 - Multiprocess module-specific levels are propagated to attached worker loggers.
 - Multiprocess spawn integration tests now use the same multiprocessing context for Writer IPC primitives and worker process creation.
+- Multiprocess log queue creation now classifies platform-rejected `ipc_log_queue_maxsize` values as `ValueError` before Writer sinks are started, while preserving runtime errors for non-validation OS failures.
 - Tests no longer depend on `multiprocessing.Queue.empty()` for correctness.
 - Benchmark runners now write session artifacts only; they no longer regenerate top-level `BENCHMARK.md`.
 - Official testing policy is now `uv sync --group dev` followed by the full `uv run pytest tests -v` run.
@@ -36,9 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Package license metadata now uses SPDX `license = "Apache-2.0"` and `license-files = ["LICENSE"]`.
 - GitHub CI now checks generated API docs, design-document sync, benchmark summaries, and package build output.
 - PyPI publish workflow now verifies tag/version consistency and repeats publication preflight checks before publishing.
+- GitHub CI now includes Ubuntu free-threaded CPython `3.13t` and `3.14t` test jobs with `PYTHON_GIL=0`.
 
 ### Verified
-- Full local v23j validation on Python 3.14.3 / Windows: `649 passed, 3 skipped` (`652` collected). Skip counts can vary by platform because fork tests are POSIX-only and Windows spawn tests are Windows-only.
+- Full local v23j validation on Python 3.14.3 / Windows: `651 passed, 3 skipped` (`654` collected). Skip counts can vary by platform because fork tests are POSIX-only and Windows spawn tests are Windows-only.
 - Targeted v23j configuration validation: `256 passed` across configure, routing, INI, reopen, and MP integration tests.
 - Coverage validation regenerated `coverage.xml`: terminal total `86%`, line-rate `88.49%`, branch-rate `80.53%`.
 - Targeted regression validation for MP runtime, MP integration, OpenTelemetry, and structlog tests: `91 passed`.

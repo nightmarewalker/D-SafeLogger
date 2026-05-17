@@ -5,6 +5,7 @@ Covers:
 """
 from __future__ import annotations
 
+import errno
 import logging
 import os
 import sys
@@ -254,6 +255,38 @@ class TestQueueMaxsizeConfig:
         )
         assert ctx.log_queue_maxsize == 100_001
         assert 'ipc_log_queue_maxsize' in capsys.readouterr().err
+
+    def test_unsupported_log_queue_maxsize_raises_before_sinks(
+        self, tmp_path, mp_state, monkeypatch
+    ):
+        """Platform queue-size rejection is a config error before sinks are built."""
+        def raise_invalid_argument(*args, **kwargs):
+            raise OSError(errno.EINVAL, 'invalid argument')
+
+        def fail_if_sinks_built(*args, **kwargs):
+            raise AssertionError('sink groups should not be built')
+
+        monkeypatch.setattr(mp, 'TrackedQueue', raise_invalid_argument)
+        monkeypatch.setattr(mp, '_build_writer_sink_groups', fail_if_sinks_built)
+
+        with pytest.raises(ValueError, match='ipc_log_queue_maxsize'):
+            mp.ConfigureLogger(
+                log_path=str(tmp_path), console_out=False,
+                ipc_log_queue_maxsize=100_001,
+            )
+        assert not list(tmp_path.iterdir())
+
+    def test_log_queue_os_failure_is_runtime_error(
+        self, tmp_path, mp_state, monkeypatch
+    ):
+        """Non-validation OS failures are not reported as user config errors."""
+        def raise_too_many_open_files(*args, **kwargs):
+            raise OSError(errno.EMFILE, 'too many open files')
+
+        monkeypatch.setattr(mp, 'TrackedQueue', raise_too_many_open_files)
+
+        with pytest.raises(RuntimeError, match='multiprocess log queue'):
+            mp.ConfigureLogger(log_path=str(tmp_path), console_out=False)
 
     def test_invalid_log_queue_env_raises(
         self, tmp_path, mp_state, monkeypatch

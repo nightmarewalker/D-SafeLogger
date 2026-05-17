@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import atexit
 import configparser
+import errno
 import hashlib
 import json
 import logging
@@ -263,6 +264,19 @@ def _build_writer_sink_groups(
         sink_groups[f'module:{mod_name}'] = [mod_handler]
 
     return sink_groups
+
+
+def _create_log_queue(maxsize: int, ipc_mp_ctx: Any) -> TrackedQueue:
+    """Create the Writer log queue and classify platform maxsize failures."""
+    try:
+        return TrackedQueue(maxsize=maxsize, ctx=ipc_mp_ctx)
+    except OSError as exc:
+        if exc.errno in {errno.EINVAL, errno.ERANGE}:
+            raise ValueError(
+                f'ipc_log_queue_maxsize {maxsize} is not supported by '
+                f'multiprocessing context {ipc_mp_ctx.get_start_method()!r}'
+            ) from exc
+        raise RuntimeError('failed to create multiprocess log queue') from exc
 
 
 def _mp_shutdown() -> None:
@@ -742,11 +756,6 @@ def ConfigureLogger(
                 Path(str(args_config['manifest_path'])).parent
             )
 
-        # ── Build Writer-side sink groups ─────────────────────────────────────
-        sink_groups = _build_writer_sink_groups(
-            args_config, merged_modules, resolved_sens_kws
-        )
-
         # Module routes: modules with dedicated Writer-side file sinks
         module_routes: list[str] = [
             mod_name for mod_name, mod_conf in merged_modules.items()
@@ -764,13 +773,7 @@ def ConfigureLogger(
         # implementation auto-detects native support and only pays the
         # Value-counter overhead on unsupported platforms.
         ipc_mp_ctx = _resolve_mp_context(mp_context)
-        try:
-            log_queue = TrackedQueue(maxsize=resolved_log_queue_maxsize, ctx=ipc_mp_ctx)
-        except OSError as exc:
-            raise ValueError(
-                f'ipc_log_queue_maxsize {resolved_log_queue_maxsize} is not supported '
-                f'by multiprocessing context {ipc_mp_ctx.get_start_method()!r}'
-            ) from exc
+        log_queue = _create_log_queue(resolved_log_queue_maxsize, ipc_mp_ctx)
         control_queue = ipc_mp_ctx.Queue(maxsize=_CONTROL_QUEUE_MAXSIZE)
 
         # ── Build BootstrapContext ────────────────────────────────────────────
@@ -799,6 +802,11 @@ def ConfigureLogger(
             writer_flush_batch=resolved_writer_flush_batch,
             ipc_log_timeout=ipc_log_timeout,
             overflow_policy='drop',
+        )
+
+        # ── Build Writer-side sink groups ─────────────────────────────────────
+        sink_groups = _build_writer_sink_groups(
+            args_config, merged_modules, resolved_sens_kws
         )
 
         # ── Start WriterRuntime ───────────────────────────────────────────────

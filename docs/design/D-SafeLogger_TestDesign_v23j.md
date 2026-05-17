@@ -9,7 +9,7 @@
 
 v23j は v23h 完了時点の OSS 公開前指摘に対するユーザー判断に基づく修正版である。v23h の sink 分類 / bounded shutdown 契約を維持した上で、公開前のテスト契約・MP E2E・benchmark 成果物管理を確定する。
 
-現行 v23j のローカル検証 baseline は Python 3.14.3 / Windows 上の結果であり、`649 passed, 3 skipped`（`652` collected）である。fork E2E は POSIX-only、Windows spawn E2E は Windows-only であるため、OS によって skipped 数は変動し得る。
+現行 v23j のローカル検証 baseline は Python 3.14.3 / Windows 上の結果であり、`651 passed, 3 skipped`（`654` collected）である。fork E2E は POSIX-only、Windows spawn E2E は Windows-only であるため、OS によって skipped 数は変動し得る。
 
 v23h から継続する動作変更は以下:
 

@@ -81,13 +81,13 @@ uv run pytest tests -v
 Current v23j local validation on Python 3.14.3 / Windows:
 
 ```text
-649 passed, 3 skipped
+651 passed, 3 skipped
 ```
 
 Latest collection-only validation:
 
 ```text
-652 tests collected
+654 tests collected
 ```
 
 Latest coverage validation: terminal total `86%`, XML line-rate `88.49%`, XML branch-rate `80.53%` on Python 3.14.3 / Windows.
@@ -276,13 +276,13 @@ uv run pytest tests -v
 現行 v23j の local validation（Python 3.14.3 / Windows）:
 
 ```text
-649 passed, 3 skipped
+651 passed, 3 skipped
 ```
 
 最新の collect-only validation:
 
 ```text
-652 tests collected
+654 tests collected
 ```
 
 最新 coverage validation: terminal total `86%`, XML line-rate `88.49%`, XML branch-rate `80.53%`（Python 3.14.3 / Windows）。

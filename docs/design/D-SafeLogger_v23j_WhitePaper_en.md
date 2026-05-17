@@ -3868,7 +3868,7 @@ Facts that can be confirmed from `pyproject.toml` and `MANIFEST.in`:
 - Operation guide: `TESTING.md` / `BENCHMARK.md` / `CONTRIBUTING.md` / `CHANGELOG.md`
 #### 7.10.3 Quality Gate
 `TESTING.md` and public validation procedures:
-- v23j local validation on Python 3.14.3 / Windows: **649 passed, 3 skipped** (652 collected, `uv run pytest tests -v`)
+- v23j local validation on Python 3.14.3 / Windows: **651 passed, 3 skipped** (654 collected, `uv run pytest tests -v`)
 - The skipped count is platform-dependent because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
 - Coverage: terminal total **86%**, XML line-rate **88.49%**, branch-rate **80.53%**
 - multiprocess tests / OTel/structlog coexistence tests are included in the official quality gate
@@ -3935,7 +3935,7 @@ The observed facts referenced in this chapter can be summarized as follows. This
 7. **International-market perspective**: Trend in early adoption of PEP 703 / Supply chain regulatory requirements such as Executive Order 14028 / Large-scale microservice configuration. examples / README English, Apache 2.0, zero dependencies are supported.
 8. **The design purpose is clearly not “wide dissemination”**: §1 of the design document declares that the “top priority is to operate as a common foundation for the D ecosystem rather than to pursue wide adoption.” This reflects a design stance that prioritizes fit for organizations with specific operational requirements.
 9. **Document operations that actively specify failure boundaries**: Threat Model of `examples/08_compliance_audit.md` / Writer does not guarantee of `examples/12_multiprocess_logging.md` / What Not To Claim of `BENCHMARK.md` / HMAC out-of-scope declaration in design document §7.6.7 / remote aggregation out-of-scope declaration in design document §11.2. These are consistent with the operational stance of ``preventing misuse due to excessive expectations.''
-10. **Quality gate transparency**: 649 passed / 3 skipped on Python 3.14.3 / Windows (652 collected), coverage 86% terminal, free-threaded build test procedure, internal synchronization verification by `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`, benchmark session fixation by `benchmarks/summary/manifest.json`. The skipped count can vary by OS. These are recorded as observable quality indicators when evaluating candidate libraries for introduction.
+10. **Quality gate transparency**: 651 passed / 3 skipped on Python 3.14.3 / Windows (654 collected), coverage 86% terminal, free-threaded build test procedure, internal synchronization verification by `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`, benchmark session fixation by `benchmarks/summary/manifest.json`. The skipped count can vary by OS. These are recorded as observable quality indicators when evaluating candidate libraries for introduction.
 11. **Clear distribution structure**: The wheel contains runtime package files only and includes `py.typed`. The sdist includes docs / examples / tests / benchmark summaries / selected benchmark summaries for public validation and reproducibility. Private planning materials and temporary working files are excluded.
 12. **Relationship with competitors is not competition but separation of responsibilities**: structlog (front end) / OTel (emission) / Loguru (DX replacement) / picologging (speed differentiation) / logfire (SaaS) / Eliot (causal) have different responsibility axes and coexist or run in parallel with this library. Popularity indicators such as Loguru's 23.9k stars are a context independent of comparison of design dimensions.
 ---
@@ -4131,7 +4131,7 @@ Boundaries that public bench analysis actively enumerates:
 | API | `docs/api/dsafelogger*.md` | Automatically generated |
 | Operation | `TESTING.md` / `BENCHMARK.md` / `CONTRIBUTING.md` / `CHANGELOG.md` | — |
 #### 8.7.2 Quality Gate
-- Official test baseline: 649 passed / 3 skipped (652 collected, `uv run pytest tests -v`, Python 3.14.3 / Windows). The skipped count can vary by OS because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
+- Official test baseline: 651 passed / 3 skipped (654 collected, `uv run pytest tests -v`, Python 3.14.3 / Windows). The skipped count can vary by OS because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
 - Coverage: terminal total 86%, XML line-rate 88.49%, branch-rate 80.53%
 - multiprocess tests / OTel/structlog coexistence tests are included in the official quality gate
 - free-threaded build test procedure included (`PYTHON_GIL=0 uvx ...`)
@@ -4168,7 +4168,7 @@ Based on the observed facts in this report as a whole, we have summarized the ob
 8. **Multiprocess raw throughput is led by stdlib logging**: In `root_p8`, D-SafeLogger reaches 63-75% of stdlib throughput. `BENCHMARK.md` states this clearly as a design tradeoff reflecting fixed costs in the specification (IPC + Writer dispatch). The multiprocess value of this library is not raw throughput, but delivery-state observability.
 9. **Classifies and explains 12/12 rows in the multiprocess resilience profile**: stdlib / loguru rows are marked with `observability_gap`. Delivery-state explainability is recorded as observability specific to this library.
 #### 8.8.5 Documentation/quality operations
-10. **Quality gate and internal synchronization verification scripts are in place**: 649 passed / 3 skipped on Python 3.14.3 / Windows (652 collected), coverage 86%, internal synchronization verification by `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`, public representative session fixation by `benchmarks/summary/manifest.json`. The skipped count can vary by OS. These are recorded as observable quality indicators when evaluating candidate libraries for introduction.
+10. **Quality gate and internal synchronization verification scripts are in place**: 651 passed / 3 skipped on Python 3.14.3 / Windows (654 collected), coverage 86%, internal synchronization verification by `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`, public representative session fixation by `benchmarks/summary/manifest.json`. The skipped count can vary by OS. These are recorded as observable quality indicators when evaluating candidate libraries for introduction.
 ---
 
 ### 8.9 Summary of this chapter

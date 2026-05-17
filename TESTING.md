@@ -29,8 +29,8 @@ uv run pytest tests -v
 Current v23j local validation on Python 3.14.3 / Windows:
 
 ```text
-649 passed, 3 skipped
-652 collected
+651 passed, 3 skipped
+654 collected
 ```
 
 The collected test count is the baseline. The number of skipped tests is platform-dependent because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
@@ -126,7 +126,10 @@ Important expectations:
 
 ## Free-Threaded Python
 
-For CPython free-threaded builds, run with GIL disabled where available:
+GitHub Actions runs Ubuntu free-threaded CPython `3.13t` and `3.14t` jobs with `PYTHON_GIL=0`.
+Windows and macOS free-threaded validation remains a manual compatibility check for now.
+
+For local CPython free-threaded builds, run with GIL disabled where available:
 
 ```powershell
 # PowerShell
@@ -147,6 +150,11 @@ GitHub Actions runs the full dev-group test suite across:
 
 - OS: Ubuntu, Windows, macOS
 - Python: 3.11, 3.12, 3.13, 3.14
+
+GitHub Actions also runs a free-threaded compatibility job on Ubuntu:
+
+- Python: 3.13t, 3.14t
+- Environment: `PYTHON_GIL=0`
 
 See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 

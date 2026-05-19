@@ -88,7 +88,7 @@ def handle_order(request_id: str, user: str, amount: float):
 
 ## The Output
 
-### Main Log (`./logs/OrderAPI.log`)
+### Main Log (`./logs/OrderAPI_20260403.log`)
 
 Every JSON line includes the context keys set by `contextualize()`:
 
@@ -120,7 +120,7 @@ Because the output is structured JSON, you can filter by any field:
 cat logs/*.log | jq -s 'sort_by(.timestamp) | .[] | select(.request_id == "req-a1b2")'
 
 # Show only warnings and errors
-cat logs/OrderAPI_2026-04-03.log | jq 'select(.level == "WAR" or .level == "ERR")'
+cat logs/OrderAPI_20260403.log | jq 'select(.level == "WAR" or .level == "ERR")'
 
 # List unique request IDs that hit the payment module
 cat logs/payment_alerts.log | jq -r '.request_id' | sort -u

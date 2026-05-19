@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 from dsafelogger import ConfigureLogger, GetLogger, _shutdown
 
@@ -17,15 +18,15 @@ def test_web_api_logging_routes_contextual_json(tmp_path, clean_env):
         "default_level = INFO\n"
         f"log_path = {log_dir}\n"
         "pg_name = OrderAPI\n"
-        "routing_mode = none\n"
+        "routing_mode = daily\n"
         "structured = true\n"
         "console_out = false\n\n"
         "[dsafelogger:myapp.db]\n"
         "level = DEBUG\n"
-        f"path = {db_log}\n\n"
+        "path = db_queries.log\n\n"
         "[dsafelogger:myapp.payment]\n"
         "level = WARNING\n"
-        f"path = {payment_log}\n",
+        "path = payment_alerts.log\n",
         encoding="utf-8",
     )
 
@@ -39,15 +40,20 @@ def test_web_api_logging_routes_contextual_json(tmp_path, clean_env):
         api_logger.info("POST /orders - amount=2500.0")
         with db_logger.contextualize(request_id="req-a1b2"):
             db_logger.debug("BEGIN TRANSACTION")
+            db_logger.debug("INSERT INTO orders (user, amount) VALUES (%s, %s)")
             db_logger.debug("COMMIT")
         with payment_logger.contextualize(request_id="req-a1b2", amount=2500.0):
             payment_logger.warning("High-value order: 2500.0")
         api_logger.info("Order completed successfully")
     _shutdown()
 
+    main_log_files = sorted(log_dir.glob("OrderAPI_*.log"))
+    assert len(main_log_files) == 1
+    assert re.fullmatch(r"OrderAPI_\d{8}\.log", main_log_files[0].name)
+    assert not (log_dir / "OrderAPI.log").exists()
+
     main_records = [
-        json.loads(line)
-        for line in (log_dir / "OrderAPI.log").read_text(encoding="utf-8").splitlines()
+        json.loads(line) for line in main_log_files[0].read_text(encoding="utf-8").splitlines()
     ]
     db_records = [json.loads(line) for line in db_log.read_text(encoding="utf-8").splitlines()]
     payment_records = [
@@ -57,4 +63,8 @@ def test_web_api_logging_routes_contextual_json(tmp_path, clean_env):
     assert any(r["message"] == "Order completed successfully" for r in main_records)
     assert any(r["logger"] == "myapp.payment" and r["amount"] == 2500.0 for r in payment_records)
     assert all(r.get("request_id") == "req-a1b2" for r in db_records)
-    assert [r["message"] for r in db_records] == ["BEGIN TRANSACTION", "COMMIT"]
+    assert [r["message"] for r in db_records] == [
+        "BEGIN TRANSACTION",
+        "INSERT INTO orders (user, amount) VALUES (%s, %s)",
+        "COMMIT",
+    ]

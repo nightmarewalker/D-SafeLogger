@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import threading
 import time
 
@@ -17,31 +16,32 @@ def test_async_performance_preserves_context_from_threads(tmp_path, clean_env):
         pg_name="AsyncPerfDemo",
         console_out=False,
         is_async=True,
-        structured=True,
     )
 
     logger = GetLogger("async.demo")
 
-    def worker(worker_id: int) -> None:
+    def worker(worker_id: int, iterations: int = 20) -> None:
         with logger.contextualize(worker=worker_id):
-            for idx in range(3):
-                logger.info("Processing item", extra={"item": idx})
+            for idx in range(iterations):
+                logger.info(f"Processing item {idx}")
                 time.sleep(0.001)
             logger.info("Worker finished")
 
-    threads = [threading.Thread(target=worker, args=(idx,)) for idx in range(3)]
+    num_workers = 8
+    start = time.perf_counter()
+    threads = [threading.Thread(target=worker, args=(idx,)) for idx in range(num_workers)]
     for thread in threads:
         thread.start()
     for thread in threads:
         thread.join()
+    elapsed = time.perf_counter() - start
+
+    logger.info(f"All {num_workers} workers done in {elapsed:.3f}s")
     _shutdown()
 
-    records = [
-        json.loads(line)
-        for line in (log_dir / "AsyncPerfDemo.log").read_text(encoding="utf-8").splitlines()
-    ]
-    finished_workers = {
-        record["worker"] for record in records if record["message"] == "Worker finished"
-    }
-    assert finished_workers == {0, 1, 2}
-    assert any(record.get("item") == 2 for record in records)
+    output = (log_dir / "AsyncPerfDemo.log").read_text(encoding="utf-8")
+    assert output.count("Worker finished") == num_workers
+    assert "Processing item 19" in output
+    assert f"All {num_workers} workers done" in output
+    assert "worker:0" in output
+    assert "worker:7" in output

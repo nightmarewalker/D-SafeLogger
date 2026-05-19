@@ -43,6 +43,7 @@ class ResolvedConfig:
     color_stream: bool
     module_configs: dict[str, dict]
     color_overrides: dict[str, str]
+    sensitive_keywords: frozenset[str] = field(default_factory=frozenset)
 
 
 class Pipeline:
@@ -121,6 +122,9 @@ class PipelineBuilder:
         )
         from dsafelogger._handler import AppendOnlyFileHandler
         from dsafelogger._routing import create_strategy
+        from dsafelogger._constants import BUILTIN_SENSITIVE_KEYWORDS
+
+        sensitive_keywords = config.sensitive_keywords or BUILTIN_SENSITIVE_KEYWORDS
 
         # 1. Root strategy
         strategy = create_strategy(
@@ -149,11 +153,15 @@ class PipelineBuilder:
             file_fmt_val = self._parse_fmt(config.file_fmt)
             if file_fmt_val.get('fmt') == 'json':
                 file_formatter = (
-                    DiagnosticStructuredFormatter() if config.diagnose else StructuredFormatter()
+                    DiagnosticStructuredFormatter(sensitive_keywords=sensitive_keywords)
+                    if config.diagnose else StructuredFormatter()
                 )
             else:
                 file_formatter = (
-                    DiagnosticFormatter(**file_fmt_val) if config.diagnose else DSafeFormatter(**file_fmt_val)
+                    DiagnosticFormatter(
+                        **file_fmt_val,
+                        sensitive_keywords=sensitive_keywords,
+                    ) if config.diagnose else DSafeFormatter(**file_fmt_val)
                 )
 
         file_handler.setFormatter(file_formatter)
@@ -173,11 +181,15 @@ class PipelineBuilder:
                 console_fmt_val = self._parse_fmt(config.console_fmt)
                 if console_fmt_val.get('fmt') == 'json':
                     console_formatter = (
-                        DiagnosticStructuredFormatter() if config.diagnose else StructuredFormatter()
+                        DiagnosticStructuredFormatter(sensitive_keywords=sensitive_keywords)
+                        if config.diagnose else StructuredFormatter()
                     )
                 else:
                     console_formatter = (
-                        DiagnosticFormatter(**console_fmt_val) if config.diagnose else DSafeFormatter(**console_fmt_val)
+                        DiagnosticFormatter(
+                            **console_fmt_val,
+                            sensitive_keywords=sensitive_keywords,
+                        ) if config.diagnose else DSafeFormatter(**console_fmt_val)
                     )
             console_handler.setFormatter(console_formatter)
             handlers.append(console_handler)

@@ -1103,7 +1103,7 @@ INIファイルで指定されたモジュール別の `path` についても同
   * **`sens_kws_replace` による完全置換**: `sens_kws_replace=True` を明示的に指定した場合、ビルトインキーワードは破棄され、`sens_kws` で指定したキーワード**のみ**がマスキング対象となる。これにより「ビルトインの `key` が広すぎてマスキングされすぎる」等の問題をユーザーが完全に制御可能。
   * **マッチング**: 変数名に対する部分一致（大文字小文字不問）で判定する。例えば `password` は `user_password`, `PASSWORD_HASH`, `my_password_field` のいずれにもマッチする。
 * **巨大reprの抑制**: 個々のローカル変数の `repr()` は一定長で打ち切り、巨大オブジェクトや過度に冗長なデータがログを汚染しないようにする。`repr()` 自体に失敗した場合も診断ログ全体を壊さず、失敗した旨をプレースホルダとして出力する。
-* **cross-thread 安全性**: free-threaded build では、実行中の他 thread の frame に対する `f_locals` live 参照は unsafe である。したがって、queue を跨ぐ hand-off が発生する場合は producer thread 側で traceback と `f_locals` を安全な repr 済みスナップショットへ変換し、consumer thread 側では live 参照を行わない。
+* **cross-thread 安全性**: free-threaded build では、実行中の他 thread の frame に対する `f_locals` live 参照は unsafe である。したがって、queue を跨ぐ hand-off が発生する場合は producer thread 側で traceback と `f_locals` を安全なマスク済み repr スナップショットへ変換し、consumer thread 側では live 参照を行わない。
 * **フォールバック規則**: formatter は (1) queue hand-off 済みの診断スナップショットがあればそれを使用、(2) 同一 thread 内で `exc_info` が保持されている場合のみ live 参照を許可、(3) それ以外は standard traceback のみを出力する。
 * **[実装方針]**: diagnose の有効/無効は `ConfigureLogger` 実行時に `{prefix}_DIAGNOSE` から解決し、formatter / queue hand-off / diagnostic snapshot へ一貫して伝搬させる。heavy path は `exc_info` の存在時にのみ通す。
 

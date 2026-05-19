@@ -3328,10 +3328,10 @@ def write_sidecar(file_path: Path, hash_value: str | None = None) -> None:
 #### 出力例
 
 ```
-a1b2c3d4e5f6789...（64文字の16進SHA-256ハッシュ）  MyApp_2026-03-28.log
+a1b2c3d4e5f6789...（64文字の16進SHA-256ハッシュ）  MyApp_20260328.log
 ```
 
-検証: `sha256sum -c MyApp_2026-03-28.log.sha256`
+検証: `sha256sum -c MyApp_20260328.log.sha256`
 
 ### 15.4. マニフェスト追記
 
@@ -3365,8 +3365,8 @@ def append_manifest(file_path: Path, manifest_path: Path, hash_value: str | None
 #### マニフェストフォーマット
 
 ```
-[2026-03-28T23:59:59.123] a1b2c3d4e5f6789...  MyApp_2026-03-28.log
-[2026-03-29T23:59:59.456] b2c3d4e5f6789a1...  MyApp_2026-03-29.log
+[2026-03-28T23:59:59.123] a1b2c3d4e5f6789...  MyApp_20260328.log
+[2026-03-29T23:59:59.456] b2c3d4e5f6789a1...  MyApp_20260329.log
 ```
 
 各行の構成: `[ISO8601タイムスタンプ] SHA-256ハッシュ  ファイル名`

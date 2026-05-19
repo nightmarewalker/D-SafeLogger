@@ -46,3 +46,4 @@ WEEKDAY_SUFFIXES = ('mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun')
 
 # ── Dynamic Flags (Mutable via ConfigureLogger but kept here for fast top-level import) ──
 _diagnose_enabled = False
+_resolved_sensitive_keywords: frozenset[str] = BUILTIN_SENSITIVE_KEYWORDS

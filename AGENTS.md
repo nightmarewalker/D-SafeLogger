@@ -8,7 +8,7 @@ This guide gives AI agents the current project context, quality gates, and bench
 
 ## Current Release Status
 
-- Current target release: `0.2.0`
+- Current target release: `0.2.1`
 - Current import name: `dsafelogger`
 - Latest pre-publish review status (2026-05-07): **GO-with-fixes**, with v23j follow-up fixes applied locally.
 - Resolved release blockers:
@@ -81,16 +81,16 @@ uv run pytest tests -v
 Current v23j local validation on Python 3.14.3 / Windows:
 
 ```text
-651 passed, 3 skipped
+658 passed, 3 skipped
 ```
 
 Latest collection-only validation:
 
 ```text
-654 tests collected
+661 tests collected
 ```
 
-Latest coverage validation: terminal total `86%`, XML line-rate `88.49%`, XML branch-rate `80.53%` on Python 3.14.3 / Windows.
+Latest coverage validation: terminal total `87%`, XML line-rate `88.97%`, XML branch-rate `81.46%` on Python 3.14.3 / Windows.
 
 Skip counts are platform-dependent because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
 
@@ -203,7 +203,7 @@ Benchmark scratch/output rule:
 
 ## 現在のリリース状態
 
-- 現在の公開対象バージョン: `0.2.0`
+- 現在の公開対象バージョン: `0.2.1`
 - 現在の import 名: `dsafelogger`
 - 最新の公開前レビュー結果（2026-05-07）: **GO-with-fixes**。v23j の follow-up fixes は local に反映済み。
 - 解消済み release blockers:
@@ -276,16 +276,16 @@ uv run pytest tests -v
 現行 v23j の local validation（Python 3.14.3 / Windows）:
 
 ```text
-651 passed, 3 skipped
+658 passed, 3 skipped
 ```
 
 最新の collect-only validation:
 
 ```text
-654 tests collected
+661 tests collected
 ```
 
-最新 coverage validation: terminal total `86%`, XML line-rate `88.49%`, XML branch-rate `80.53%`（Python 3.14.3 / Windows）。
+最新 coverage validation: terminal total `87%`, XML line-rate `88.97%`, XML branch-rate `81.46%`（Python 3.14.3 / Windows）。
 
 skipped 数は OS 依存です。fork E2E tests は POSIX-only、Windows spawn E2E tests は Windows-only です。
 

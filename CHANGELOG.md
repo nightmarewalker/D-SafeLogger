@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-05-20
+
+### Fixed
+- Apply resolved `sens_kws` / `sens_kws_replace` to diagnostic local-variable snapshots across sync text, sync structured, async snapshot, and multiprocess Writer formatter paths.
+- Preserve async producer-side diagnostic frame snapshots in text diagnostic output.
+- Align daily routing examples with the implemented `YYYYMMDD` filename suffix.
+
+### Changed
+- Updated example tests to match the documented runnable examples for migration, web API, long-running service, compliance audit, production debugging, async performance, multiprocess logging, CLI operations, OpenTelemetry, structlog, and container collector coexistence scenarios.
+- Updated public docs, API docs, and test/coverage baselines for the 0.2.1 patch release.
+
+### Verified
+- Full local validation on Python 3.14.3 / Windows: `658 passed, 3 skipped` (`661` collected).
+- Coverage validation regenerated `coverage.xml`: terminal total `87%`, line-rate `88.97%`, branch-rate `81.46%`.
+- API docs, design-doc sync, and whitespace checks pass; `git diff --check` reports only CRLF/LF warnings.
+
 ## [0.2.0] - 2026-05-05
 
 ### Added

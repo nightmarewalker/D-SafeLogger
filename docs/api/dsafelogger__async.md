@@ -33,5 +33,6 @@ Public methods:
 
 | Name | Type | Value |
 |---|---|---|
+| `MASK_STRING` | `str` | `'*** MASKED ***'` |
 | `QUEUE_DRAIN_TIMEOUT_SEC` | `float` | `10.0` |
 | `WORKER_JOIN_TIMEOUT_SEC` | `float` | `5.0` |

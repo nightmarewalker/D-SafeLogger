@@ -15,7 +15,7 @@ SPDX-FileCopyrightText: 2026 D-SafeLogger contributors
 | Document version | 1.0 |
 | Publication date | 2026-05-09 |
 | Target library | **D-SafeLogger v23j** |
-| pyproject version | `0.2.0` |
+| pyproject version | `0.2.1` |
 | import name | `dsafelogger` |
 | distribution name | `d-safelogger` |
 | License | Apache License 2.0 |
@@ -242,7 +242,7 @@ The `README.md` Overview section organizes Safe into six operational dimensions.
 |---|---|
 | **Startup safety** | Invalid settings, inconsistent options, and non-writable destinations cause **setup to fail** instead of letting the application enter production with broken logging. |
 | **File safety** | The routing layer does not rename or truncate the active log file. It switches output by opening the next append-only destination, avoiding common Windows rename failures and POSIX-style stale-FD failure modes while enabling post-mortem verification with SHA-256 sidecars and manifests. |
-| **Record / context safety** | Request ID, user ID, job ID, and similar context are **snapshotted** at producer-side hand-off. Listeners and writers do not depend on live `contextvars`, and sensitive keyword masking is applied on the Writer side. |
+| **Record / context safety** | Request ID, user ID, job ID, and similar context are **snapshotted** at producer-side hand-off. Listeners and writers do not depend on live `contextvars`; diagnostic snapshots and Writer-side formatting use the sensitive-keyword set established at configure time. |
 | **Operational control** | Diagnostics, routing, hashing, log level, queue/timeout can be overwritten with environment variables without rebuilding or editing. |
 | **Concurrency / multiprocess safety** | Multiprocess workers **do not open shared log files directly**. The parent-side Writer owns the sink and accepts records via IPC. Bounded queues and explicit timeouts prevent the host process from waiting indefinitely. |
 | **Failure observability** | Delivery failures are **classified** as `KnownRejected` / `KnownDropped` / `UnexplainedLost`, making log loss describable as counters and shutdown summaries instead of invisible gaps in a file. |
@@ -696,7 +696,7 @@ Detailed design document §15a stipulates. The Transport layer is an abstraction
 Design documents §9.3 and §11.17:
 - At `is_async=True`, on the producer thread side:
   - Snapshot `contextualize()` information to private attribute (`_ds_context`) of `LogRecord`
-  - Convert `f_locals` to repr-converted snapshot only when `diagnose=True` and `exc_info` are present (`_ds_diag_frames`)
+  - Convert `f_locals` to a masked, repr-converted snapshot only when `diagnose=True` and `exc_info` are present (`_ds_diag_frames`)
 - The consumer thread side does not refer to live `contextvars`, and preferentially uses the producer side snapshot.
 - When used with `is_async=True` in the multiprocess version, it becomes double queuing of **process-local async queue + multiprocess log queue + Writer dispatch**. Usually `is_async=False` is sufficient.
 #### 2.5.3 No-Copy Snapshot (FrozenContext)
@@ -1061,7 +1061,7 @@ The design document clearly states the policy of not relying on the existence of
 - The independent `self._lock` of `AppendOnlyFileHandler` has been abolished in v21 and unified to the `acquire()` / `release()` API of the parent class `logging.Handler` (double lock overhead eliminated).
 #### 2.10.2 cross-thread safety (§9.4)
 In a free-threaded build, a `f_locals` live reference to the frame of another running thread is unsafe.
-- If a cross-queue hand-off occurs, traceback and `f_locals` are converted to a **safe repr-converted snapshot** on the producer thread side.
+- If a cross-queue hand-off occurs, traceback and `f_locals` are converted to a **safe masked, repr-converted snapshot** on the producer thread side.
 - No live references are made on the consumer thread side.
 Fallback rules:
 1. Use queue hand-off diagnostic snapshot if available
@@ -1620,7 +1620,7 @@ These points are revisited in the next chapter, “4. Security,” as safety asp
 |---|---|
 | **Startup safety** | Reject invalid settings and unwritable paths during setup → Structurally eliminate situations where "it appears to be working with broken settings" |
 | **File safety** | Do not rename/truncate → Structurally avoids the problem of not being able to rename Windows active logs + Post-mortem verification possible with SHA-256 sidecar |
-| **Record/context safety** | Eliminate dependence on snapshot → live `contextvars` during hand-off on the producer side. Apply sens_kws masking on Writer side |
+| **Record/context safety** | Eliminate dependence on snapshot → live `contextvars` during hand-off on the producer side. Apply `sens_kws` masking during diagnostic snapshots and Writer-side formatting |
 | **Operational control** | Diagnostics, routing, and hashes can be overwritten with environment variables without rebuilding |
 | **Concurrency/multiprocess safety** | Workers do not directly open shared log files, and the parent Writer owns the sink. Eliminate unlimited waiting for host process with bounded queue + explicit timeout |
 | **Failure observability** | Classify delivery failures by `KnownRejected` / `KnownDropped` / `UnexplainedLost` → silent loss is not allowed structurally |
@@ -1774,7 +1774,7 @@ Design document §9.4:
 This functions as an indirect defense against ``attacker-induced `__repr__` exceptions'' and ``log size attacks using large objects.''
 #### 4.4.8 cross-thread safety
 Design document §9.4:
-> In a free-threaded build, a `f_locals` live reference to frame of another running thread is unsafe. Therefore, when a hand-off across queues occurs, the traceback and `f_locals` are converted to a **safe repr-converted snapshot** on the producer thread side, and no live reference is made on the consumer thread side.
+> In a free-threaded build, a `f_locals` live reference to frame of another running thread is unsafe. Therefore, when a hand-off across queues occurs, the traceback and `f_locals` are converted to a **safe masked, repr-converted snapshot** on the producer thread side, and no live reference is made on the consumer thread side.
 > (`docs/design/D_SafeLogger_Specification_v23j_full.md` §9.4)
 Although this is a matter of correctness rather than security, it also helps reduce the risk of data leakage by eliminating accidents in which the internal state of other threads is unintentionally referenced in a free-threaded environment.
 ---
@@ -2537,7 +2537,7 @@ Design document §9.3:
 - Reason: To separate stdlib differences between Python 3.11 / 3.13 / 3.14 from semantics.
 Responsibilities on the producer thread side:
 - `contextualize()` information to private attribute `_ds_context` of `LogRecord` snapshot
-- Convert `f_locals` to repr-converted snapshot only if `diagnose=True` and `exc_info` are present (`_ds_diag_frames`)
+- Convert `f_locals` to a masked, repr-converted snapshot only if `diagnose=True` and `exc_info` are present (`_ds_diag_frames`)
 - Lightweight hand-off of copy + context snapshot in normal logs
 #### 5.9.3 Safe Termination Assurance Level
 Design document §9.3:
@@ -2982,7 +2982,7 @@ Design document §2 / §9.2:
 > (`docs/design/D_SafeLogger_Specification_v23j_full.md` §2)
 #### 5.19.3 cross-thread safety
 Design document §9.4:
-> In a free-threaded build, a `f_locals` live reference to frame of another running thread is unsafe. Therefore, when a hand-off across queues occurs, the traceback and `f_locals` are converted to a **safe repr-converted snapshot** on the producer thread side, and no live reference is made on the consumer thread side.
+> In a free-threaded build, a `f_locals` live reference to frame of another running thread is unsafe. Therefore, when a hand-off across queues occurs, the traceback and `f_locals` are converted to a **safe masked, repr-converted snapshot** on the producer thread side, and no live reference is made on the consumer thread side.
 > (`docs/design/D_SafeLogger_Specification_v23j_full.md` §9.4)
 #### 5.19.4 thread boundary semantics
 Design document §9.5:
@@ -2995,7 +2995,7 @@ Design document §2 v21 revised:
 - Eliminate double lock overhead by abolishing the independent `self._lock` of `AppendOnlyFileHandler` and unifying it with the lock API (`self.acquire()/release()`) of the parent class `logging.Handler`
 #### 5.19.6 Functional Observation
 - Structurally eliminates shared state destruction in free-threaded builds by using an explicit locking design that does not assume the existence of GIL.
-- Eliminate the risk of live reference to other thread frames in free-threaded build by making `f_locals` a repr-converted snapshot.
+- Eliminate the risk of live reference to other thread frames in free-threaded build by making `f_locals` a masked, repr-converted snapshot.
 - Eliminate accidents where the user's request context is leaked to the internal thread by starting an empty Context in the internal thread.
 ---
 
@@ -3026,7 +3026,7 @@ formatter falls back in the following order:
 #### 5.20.6 Functional Observation
 - The diagnostic function is positioned as an ``operation tool during production'' rather than a ``useful function during development'' (only environment variables enabled, intentional operation by the operator).
 - repr Defensive implementation against failures and large objects.
-- Maintains safety in a free-threaded environment because hand-off is performed using repr-converted snapshots even via async/multiprocess.
+- Maintains safety in a free-threaded environment because hand-off is performed using masked, repr-converted snapshots even via async/multiprocess.
 ---
 
 ### 5.21 sens_kws masking
@@ -3868,9 +3868,9 @@ Facts that can be confirmed from `pyproject.toml` and `MANIFEST.in`:
 - Operation guide: `TESTING.md` / `BENCHMARK.md` / `CONTRIBUTING.md` / `CHANGELOG.md`
 #### 7.10.3 Quality Gate
 `TESTING.md` and public validation procedures:
-- v23j local validation on Python 3.14.3 / Windows: **651 passed, 3 skipped** (654 collected, `uv run pytest tests -v`)
+- v23j local validation on Python 3.14.3 / Windows: **658 passed, 3 skipped** (661 collected, `uv run pytest tests -v`)
 - The skipped count is platform-dependent because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
-- Coverage: terminal total **86%**, XML line-rate **88.49%**, branch-rate **80.53%**
+- Coverage: terminal total **87%**, XML line-rate **88.97%**, branch-rate **81.46%**
 - multiprocess tests / OTel/structlog coexistence tests are included in the official quality gate
 - free-threaded build test: `PYTHON_GIL=0 uvx --python cpython-3.13+freethreaded --from pytest pytest tests -v`
 #### 7.10.4 Release Management
@@ -3881,7 +3881,7 @@ Public validation procedures:
 - `BENCHMARK.md` is an interpretation of manual editing and will not be regenerated from benchmark runner
 #### 7.10.5 Status at time of publication
 Pre-publication review record (as of 2026-05-07):
-- Current release target version: `0.2.0`
+- Current release target version: `0.2.1`
 - Latest pre-release review results: **GO-with-fixes**
 - Required correction items before publication (release blockers) are listed
 Although these indicate the existence of a ``prepared release operation flow,'' this chapter does not consider this to be the ``reason for popularity,'' but only records it as the technical structure of the distribution.
@@ -3935,7 +3935,7 @@ The observed facts referenced in this chapter can be summarized as follows. This
 7. **International-market perspective**: Trend in early adoption of PEP 703 / Supply chain regulatory requirements such as Executive Order 14028 / Large-scale microservice configuration. examples / README English, Apache 2.0, zero dependencies are supported.
 8. **The design purpose is clearly not “wide dissemination”**: §1 of the design document declares that the “top priority is to operate as a common foundation for the D ecosystem rather than to pursue wide adoption.” This reflects a design stance that prioritizes fit for organizations with specific operational requirements.
 9. **Document operations that actively specify failure boundaries**: Threat Model of `examples/08_compliance_audit.md` / Writer does not guarantee of `examples/12_multiprocess_logging.md` / What Not To Claim of `BENCHMARK.md` / HMAC out-of-scope declaration in design document §7.6.7 / remote aggregation out-of-scope declaration in design document §11.2. These are consistent with the operational stance of ``preventing misuse due to excessive expectations.''
-10. **Quality gate transparency**: 651 passed / 3 skipped on Python 3.14.3 / Windows (654 collected), coverage 86% terminal, free-threaded build test procedure, internal synchronization verification by `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`, benchmark session fixation by `benchmarks/summary/manifest.json`. The skipped count can vary by OS. These are recorded as observable quality indicators when evaluating candidate libraries for introduction.
+10. **Quality gate transparency**: 658 passed / 3 skipped on Python 3.14.3 / Windows (661 collected), coverage 87% terminal, free-threaded build test procedure, internal synchronization verification by `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`, benchmark session fixation by `benchmarks/summary/manifest.json`. The skipped count can vary by OS. These are recorded as observable quality indicators when evaluating candidate libraries for introduction.
 11. **Clear distribution structure**: The wheel contains runtime package files only and includes `py.typed`. The sdist includes docs / examples / tests / benchmark summaries / selected benchmark summaries for public validation and reproducibility. Private planning materials and temporary working files are excluded.
 12. **Relationship with competitors is not competition but separation of responsibilities**: structlog (front end) / OTel (emission) / Loguru (DX replacement) / picologging (speed differentiation) / logfire (SaaS) / Eliot (causal) have different responsibility axes and coexist or run in parallel with this library. Popularity indicators such as Loguru's 23.9k stars are a context independent of comparison of design dimensions.
 ---
@@ -4131,8 +4131,8 @@ Boundaries that public bench analysis actively enumerates:
 | API | `docs/api/dsafelogger*.md` | Automatically generated |
 | Operation | `TESTING.md` / `BENCHMARK.md` / `CONTRIBUTING.md` / `CHANGELOG.md` | — |
 #### 8.7.2 Quality Gate
-- Official test baseline: 651 passed / 3 skipped (654 collected, `uv run pytest tests -v`, Python 3.14.3 / Windows). The skipped count can vary by OS because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
-- Coverage: terminal total 86%, XML line-rate 88.49%, branch-rate 80.53%
+- Official test baseline: 658 passed / 3 skipped (661 collected, `uv run pytest tests -v`, Python 3.14.3 / Windows). The skipped count can vary by OS because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
+- Coverage: terminal total 87%, XML line-rate 88.97%, branch-rate 81.46%
 - multiprocess tests / OTel/structlog coexistence tests are included in the official quality gate
 - free-threaded build test procedure included (`PYTHON_GIL=0 uvx ...`)
 - Internal synchronization verification on `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`
@@ -4144,7 +4144,7 @@ Boundaries that public bench analysis actively enumerates:
 - `py.typed` included
 - `pyproject.toml` Zero runtime dependency
 - Distribution target is only under `src/dsafelogger/`
-- Release target version: 0.2.0
+- Release target version: 0.2.1
 - Latest pre-release review results: GO-with-fixes (2026-05-07)
 #### 8.7.4 Characteristics of document operation
 - Multilingual: README in Japanese and English, design document in Japanese, examples/API/operation guide in English
@@ -4168,7 +4168,7 @@ Based on the observed facts in this report as a whole, we have summarized the ob
 8. **Multiprocess raw throughput is led by stdlib logging**: In `root_p8`, D-SafeLogger reaches 63-75% of stdlib throughput. `BENCHMARK.md` states this clearly as a design tradeoff reflecting fixed costs in the specification (IPC + Writer dispatch). The multiprocess value of this library is not raw throughput, but delivery-state observability.
 9. **Classifies and explains 12/12 rows in the multiprocess resilience profile**: stdlib / loguru rows are marked with `observability_gap`. Delivery-state explainability is recorded as observability specific to this library.
 #### 8.8.5 Documentation/quality operations
-10. **Quality gate and internal synchronization verification scripts are in place**: 651 passed / 3 skipped on Python 3.14.3 / Windows (654 collected), coverage 86%, internal synchronization verification by `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`, public representative session fixation by `benchmarks/summary/manifest.json`. The skipped count can vary by OS. These are recorded as observable quality indicators when evaluating candidate libraries for introduction.
+10. **Quality gate and internal synchronization verification scripts are in place**: 658 passed / 3 skipped on Python 3.14.3 / Windows (661 collected), coverage 87%, internal synchronization verification by `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`, public representative session fixation by `benchmarks/summary/manifest.json`. The skipped count can vary by OS. These are recorded as observable quality indicators when evaluating candidate libraries for introduction.
 ---
 
 ### 8.9 Summary of this chapter
@@ -4336,7 +4336,7 @@ We will organize the D-SafeLogger-specific terms that frequently appear in this 
 |---|---|
 | **Startup safety** | Reject invalid settings and unwritable paths during setup |
 | **File safety** | append-only routing without rename/truncate + SHA-256 sidecar |
-| **Record / context safety** | Snapshot at hand-off on the producer side, sens_kws masking on the Writer side |
+| **Record / context safety** | Snapshot at hand-off on the producer side; `sens_kws` masking during diagnostic snapshots and Writer-side formatting |
 | **Operational control** | Overriding without rebuilding with environment variables |
 | **Concurrency / multiprocess safety** | parent-side Writer owns sink, bounded queue + explicit timeout |
 | **Failure observability** | Classification of `KnownRejected` / `KnownDropped` / `UnexplainedLost` |

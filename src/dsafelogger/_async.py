@@ -12,7 +12,7 @@ import traceback
 from typing import Any
 
 from dsafelogger import _constants
-from dsafelogger._constants import QUEUE_DRAIN_TIMEOUT_SEC, WORKER_JOIN_TIMEOUT_SEC
+from dsafelogger._constants import MASK_STRING, QUEUE_DRAIN_TIMEOUT_SEC, WORKER_JOIN_TIMEOUT_SEC
 from dsafelogger._context import _snapshot_context
 
 
@@ -43,7 +43,10 @@ class DSafeQueueHandler(logging.handlers.QueueHandler):
                 traceback.format_exception(*record.exc_info)
             )
             # Snapshot f_locals frames
-            record._ds_diag_frames = self._snapshot_frames(record.exc_info)  # type: ignore[attr-defined]
+            record._ds_diag_frames = self._snapshot_frames(  # type: ignore[attr-defined]
+                record.exc_info,
+                _constants._resolved_sensitive_keywords,
+            )
         else:
             # Fast path: just exc_text for non-diagnose
             if record.exc_info and record.exc_info[1]:
@@ -54,8 +57,12 @@ class DSafeQueueHandler(logging.handlers.QueueHandler):
         return record
 
     @staticmethod
-    def _snapshot_frames(exc_info: tuple) -> list[dict]:
+    def _snapshot_frames(
+        exc_info: tuple,
+        sensitive_keywords: frozenset[str] | None = None,
+    ) -> list[dict]:
         """Snapshot f_locals from traceback frames."""
+        keywords = sensitive_keywords or _constants.BUILTIN_SENSITIVE_KEYWORDS
         _, _, exc_tb = exc_info
         frames: list[dict] = []
         tb = exc_tb
@@ -63,6 +70,9 @@ class DSafeQueueHandler(logging.handlers.QueueHandler):
             frame = tb.tb_frame
             variables: dict[str, Any] = {}
             for name, value in frame.f_locals.items():
+                if any(kw in name.lower() for kw in keywords):
+                    variables[name] = MASK_STRING
+                    continue
                 try:
                     variables[name] = repr(value)
                 except Exception:

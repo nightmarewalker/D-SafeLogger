@@ -50,6 +50,7 @@ def test_opentelemetry_logging_correlation_survives_async_handoff(tmp_path, clea
         tracer = trace_provider.get_tracer(__name__)
         logger = GetLogger("checkout.api")
         with tracer.start_as_current_span("authorize-payment") as span:
+            logger.info("Authorizing payment", extra={"order_id": "ord-1042", "amount": 249.0})
             logger.info("Payment authorized", extra={"order_id": "ord-1042", "amount": 249.0})
             span_context = span.get_span_context()
             expected_trace_id = f"{span_context.trace_id:032x}"
@@ -58,8 +59,12 @@ def test_opentelemetry_logging_correlation_survives_async_handoff(tmp_path, clea
     finally:
         instrumentor.uninstrument()
 
-    record = json.loads((tmp_path / "CheckoutAPI.log").read_text(encoding="utf-8").strip())
-    assert record["message"] == "Payment authorized"
+    records = [
+        json.loads(line)
+        for line in (tmp_path / "CheckoutAPI.log").read_text(encoding="utf-8").splitlines()
+    ]
+    assert [record["message"] for record in records] == ["Authorizing payment", "Payment authorized"]
+    record = records[-1]
     assert record["otelTraceID"] == expected_trace_id
     assert record["otelSpanID"] == expected_span_id
     assert record["otelServiceName"] == "checkout-api"

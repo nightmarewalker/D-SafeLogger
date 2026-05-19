@@ -29,8 +29,8 @@ uv run pytest tests -v
 Current v23j local validation on Python 3.14.3 / Windows:
 
 ```text
-651 passed, 3 skipped
-654 collected
+658 passed, 3 skipped
+661 collected
 ```
 
 The collected test count is the baseline. The number of skipped tests is platform-dependent because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
@@ -38,9 +38,9 @@ The collected test count is the baseline. The number of skipped tests is platfor
 Latest coverage validation generated `coverage.xml` on Python 3.14.3 / Windows:
 
 ```text
-TOTAL coverage: 86%
-XML line-rate: 88.49%
-XML branch-rate: 80.53%
+TOTAL coverage: 87%
+XML line-rate: 88.97%
+XML branch-rate: 81.46%
 ```
 
 `coverage.xml`, `.coverage`, and `htmlcov/` are local/CI artifacts and are ignored by `.gitignore`; keep coverage numbers in documentation, not the generated files themselves.
@@ -111,6 +111,11 @@ uv run pytest tests -x -v
 | Multiprocess E2E | `tests/test_mp_integration.py`, `tests/test_mp_fork.py`, `tests/test_mp_spawn_windows.py` |
 | Third-party coexistence | `tests/test_opentelemetry.py`, `tests/test_structlog.py` |
 | Branch coverage edge cases | `tests/test_coverage_boost.py` |
+
+Diagnostic masking coverage must include both component-level checks and
+configuration-to-output integration checks. In particular, `sens_kws` and
+`sens_kws_replace` are validated through `ConfigureLogger(...)` into sync text,
+sync structured, async snapshot, and multiprocess Writer formatter paths.
 
 ## Multiprocess Test Policy
 

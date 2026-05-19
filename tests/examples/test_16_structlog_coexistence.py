@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 
 import pytest
 
@@ -19,10 +20,11 @@ def test_structlog_frontend_dsafelogger_json_backend(tmp_path, clean_env):
 
     ConfigureLogger(
         log_path=str(tmp_path),
-        pg_name="StructlogApp",
-        routing_mode="none",
+        pg_name="MyApp",
+        routing_mode="daily",
         console_out=False,
         structured=True,
+        is_async=True,
     )
 
     try:
@@ -37,15 +39,18 @@ def test_structlog_frontend_dsafelogger_json_backend(tmp_path, clean_env):
         )
 
         log = structlog.get_logger("chk_api").bind(session_id="xy-123", tenant="acme")
-        log.info("login_success", method="oauth")
+        log.info("checkout_completed", status="success")
         _shutdown()
     finally:
         structlog.reset_defaults()
         logging.getLogger().handlers.clear()
 
-    record = json.loads((tmp_path / "StructlogApp.log").read_text(encoding="utf-8").strip())
+    log_files = sorted(tmp_path.glob("MyApp_*.log"))
+    assert len(log_files) == 1
+    assert re.fullmatch(r"MyApp_\d{8}\.log", log_files[0].name)
+    record = json.loads(log_files[0].read_text(encoding="utf-8").strip())
     assert record["logger"] == "chk_api"
-    assert record["message"] == "login_success"
+    assert record["message"] == "checkout_completed"
     assert record["session_id"] == "xy-123"
     assert record["tenant"] == "acme"
-    assert record["method"] == "oauth"
+    assert record["status"] == "success"

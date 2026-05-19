@@ -234,6 +234,22 @@ class TestMpConfigureLogger:
         )
         assert isinstance(ctx, BootstrapContext)
 
+    def test_sens_kws_reaches_writer_diagnostic_formatter(
+        self, tmp_path, mp_state, clean_env, monkeypatch
+    ):
+        """Resolved sensitive keywords are injected into Writer-side formatters."""
+        monkeypatch.setenv('D_LOG_DIAGNOSE', '1')
+        mp.ConfigureLogger(
+            log_path=str(tmp_path),
+            console_out=False,
+            sens_kws=['credit_card'],
+        )
+
+        formatter = mp._mp_writer_runtime._sink_groups['root'][0].formatter
+        assert isinstance(formatter, DiagnosticFormatter)
+        assert 'credit_card' in formatter._sensitive_keywords
+        assert 'password' in formatter._sensitive_keywords
+
     def test_ctx_is_bootstrap_context(self, tmp_path, mp_state):
         """ConfigureLogger returns a valid BootstrapContext with all required fields."""
         ctx = mp.ConfigureLogger(log_path=str(tmp_path), console_out=False)

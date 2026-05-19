@@ -77,6 +77,37 @@ class TestDSafeQueueHandler:
             assert hasattr(prepared, '_ds_diag_frames')
             assert isinstance(prepared._ds_diag_frames, list)
 
+    def test_prepare_diagnose_masks_custom_sensitive_keywords(self):
+        """Diagnose snapshots must be masked before async handoff."""
+        from dsafelogger import _constants
+        original_diagnose = _constants._diagnose_enabled
+        original_keywords = _constants._resolved_sensitive_keywords
+        _constants._diagnose_enabled = True
+        _constants._resolved_sensitive_keywords = frozenset({'credit_card'})
+        q = queue.Queue()
+        handler = DSafeQueueHandler(q)
+
+        try:
+            try:
+                credit_card = '4111-1111-1111-1111'  # noqa: F841
+                public_value = 'visible-value'  # noqa: F841
+                raise ValueError('test error')
+            except ValueError:
+                record = logging.LogRecord(
+                    'test', logging.ERROR, 'test.py', 1, 'msg', (), sys.exc_info(),
+                )
+                prepared = handler.prepare(record)
+        finally:
+            _constants._diagnose_enabled = original_diagnose
+            _constants._resolved_sensitive_keywords = original_keywords
+
+        variables = {}
+        for frame in prepared._ds_diag_frames:
+            variables.update(frame['variables'])
+        assert variables['credit_card'] == '*** MASKED ***'
+        assert variables['public_value'] == "'visible-value'"
+        assert '4111-1111-1111-1111' not in repr(prepared._ds_diag_frames)
+
 
 class TestDSafeQueueListener:
     """UT-QL: DSafeQueueListener tests."""

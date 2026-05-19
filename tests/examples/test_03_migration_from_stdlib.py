@@ -12,7 +12,7 @@ def test_migration_from_stdlib_keeps_existing_call_sites(tmp_path, clean_env):
 
     ConfigureLogger(
         log_path=str(log_dir),
-        pg_name="Migration",
+        pg_name="MyApp",
         console_out=False,
         fmt="%(levelname)s:%(name)s:%(message)s",
     )
@@ -25,7 +25,7 @@ def test_migration_from_stdlib_keeps_existing_call_sites(tmp_path, clean_env):
         new_logger.info("new code gains contextualize")
     _shutdown()
 
-    output = (log_dir / "Migration.log").read_text(encoding="utf-8")
+    output = (log_dir / "MyApp.log").read_text(encoding="utf-8")
     assert "INF:legacy.module:legacy call site still works" in output
     assert "INF:mymodule.new:new code gains contextualize" in output
     assert "request_id:abc-123" in output

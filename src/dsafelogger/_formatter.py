@@ -230,6 +230,9 @@ class DiagnosticFormatter(DSafeFormatter):
         snapshot_text = getattr(record, '_ds_exc_text', None)
         if snapshot_text:
             result += '\n' + snapshot_text
+            snapshot_frames = getattr(record, '_ds_diag_frames', None)
+            if snapshot_frames:
+                result += '\n' + self._format_snapshot_frames(snapshot_frames)
             return result
 
         # Live f_locals expansion
@@ -274,6 +277,19 @@ class DiagnosticFormatter(DSafeFormatter):
             cause = cause.__cause__
 
         return '\n'.join(lines) if lines else ''
+
+    @staticmethod
+    def _format_snapshot_frames(frames: list[dict]) -> str:
+        """Format producer-side diagnostic frame snapshots."""
+        lines: list[str] = []
+        for frame in frames:
+            frame_name = frame.get('frame', '<unknown>')
+            lines.append(f'--- Local Variables ({frame_name}) ---')
+            variables = frame.get('variables', {})
+            if isinstance(variables, dict):
+                for name, value in variables.items():
+                    lines.append(f'  {name} = {value}')
+        return '\n'.join(lines)
 
     def _is_sensitive(self, name: str) -> bool:
         """Check if variable name contains a sensitive keyword (case-insensitive)."""

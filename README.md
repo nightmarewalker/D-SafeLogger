@@ -39,7 +39,7 @@ logger = GetLogger(__name__)
 logger.info("Application started")
 ```
 
-`pg_name` is the application name used as the prefix of routed log file names, for example `MyApp_2026-04-03.log`.
+`pg_name` is the application name used as the prefix of routed log file names, for example `MyApp_20260403.log`.
 
 Typical text output:
 
@@ -95,7 +95,7 @@ The "Safe" in the name is a design stance that runs across several dimensions of
 
 - **Startup safety:** invalid settings, inconsistent options, and unwritable destinations fail during setup. D-SafeLogger stops a broken logging configuration before the application starts doing real work, instead of silently degrading later.
 - **File safety:** the routing layer opens the next destination instead of renaming or truncating the active log file, which avoids the common Windows failure mode where active log files cannot be renamed. It also avoids the POSIX case where a successful rename leaves the writer appending to the previous file. Routed files can be paired with SHA-256 sidecars and an optional manifest, so log content is verifiable after the fact.
-- **Record and context safety:** request IDs, user IDs, job IDs, and other context are snapshotted on the producer side at hand-off, so listeners and Writers do not depend on live `contextvars`. Sensitive-keyword masking is applied on the Writer side using the keyword set established at configure time.
+- **Record and context safety:** request IDs, user IDs, job IDs, and other context are snapshotted on the producer side at hand-off, so listeners and Writers do not depend on live `contextvars`. Diagnostic local-variable snapshots and Writer-side formatting use the sensitive-keyword set established at configure time.
 - **Operational control:** environment variables provide explicit runtime overrides for diagnostics, routing, hashing, log levels, and queue/timeout behavior without rebuilding or editing application code.
 - **Concurrency and multiprocess safety:** multiprocess workers do not open the shared log files themselves. A parent-side Writer owns the sinks and accepts records over IPC, with bounded queues and explicit timeouts that keep the host process from unbounded waits.
 - **Failure observability:** when records cannot be delivered, the runtime classifies the outcome where it can: `KnownRejected`, `KnownDropped`, or `UnexplainedLost`. Counters and shutdown summaries make abnormal scenarios describable rather than silent.

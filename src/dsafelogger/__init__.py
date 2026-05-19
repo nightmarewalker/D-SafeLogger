@@ -9,7 +9,7 @@ Public API:
 
 from __future__ import annotations
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 __all__ = ['ConfigureLogger', 'GetLogger', 'register_level', 'ReopenLogFiles']
 
 import atexit
@@ -156,6 +156,7 @@ def _reset_for_tests() -> None:
     _diagnose_enabled = False
     constants_mod._diagnose_enabled = False
     _resolved_sensitive_keywords = BUILTIN_SENSITIVE_KEYWORDS
+    constants_mod._resolved_sensitive_keywords = BUILTIN_SENSITIVE_KEYWORDS
     _manifest_locks.clear()
     _family_locks.clear()
 
@@ -621,6 +622,7 @@ def _do_configure(
             )
         else:
             _resolved_sensitive_keywords = BUILTIN_SENSITIVE_KEYWORDS
+    _constants._resolved_sensitive_keywords = _resolved_sensitive_keywords
 
     # ── Step 10: Configure root logger ──
     root = logging.getLogger()
@@ -678,6 +680,7 @@ def _do_configure(
         color_stream=color_enabled,
         module_configs=merged_modules,
         color_overrides=color_overrides,
+        sensitive_keywords=_resolved_sensitive_keywords,
     )
 
     builder = PipelineBuilder()

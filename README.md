@@ -155,11 +155,12 @@ Notes:
 - **Centralized setup:** replace common `basicConfig()`, `dictConfig()`, formatter, handler, and rotating-file boilerplate with `ConfigureLogger()`.
 - **Fail-fast initialization:** invalid configuration and unwritable log destinations fail during setup instead of degrading silently.
 - **Append-only file routing:** the routing layer opens the next destination instead of renaming or truncating the active log file. This avoids the common Windows failure mode where active log files cannot be renamed, and it avoids the POSIX case where a writer may continue writing to the previous file after a successful rename.
+- **Retention for routed files:** routed files can be kept by `backup_count`; older files can be deleted by the purge worker or ZIP-archived with `archive_mode=True`.
 - **Classified delivery state:** loss, reject, and drop events are not treated as invisible file gaps. When records cannot be delivered, the runtime classifies the outcome as known-rejected, known-dropped, or unexplained-lost where applicable.
 - **Bounded logging path:** D-SafeLogger uses bounded queues, explicit timeouts, and explicit rejection paths to avoid unbounded logging-side waits in the host process.
 - **Structured JSON Lines:** emit log records as JSON fields for log collectors and observability pipelines.
 - **Contextual logging:** attach request IDs, user IDs, job IDs, or other context with thread-safe and async-safe propagation. Producer-side context snapshots are taken at hand-off so listeners and Writers do not look up live `contextvars`.
-- **Integrity sidecars:** generate SHA-256 sidecars and optional manifest entries for routed log files.
+- **Integrity sidecars:** generate SHA-256 sidecars and optional manifest entries for routed log files. This is tamper-evidence for closed files, not an access-control or compliance system.
 - **Operational overrides:** change log level, module routing, console output, color, hashing, config file path, and queue/timeout parameters through environment variables, typically to raise diagnostics in production without code changes.
 - **Environment-only diagnostic mode:** opt in via `D_LOG_DIAGNOSE=1` for `f_locals` expansion of selected frames; deliberately not exposed through INI or arguments, so it cannot be enabled by an unowned configuration file.
 - **Async transport:** opt in to queue-backed logging when application threads should avoid direct sink writes.
@@ -172,6 +173,8 @@ Notes:
 `dsafelogger.mp` is for applications where multiple worker processes need to send logs to shared destinations without each worker independently opening the same files.
 
 In this mode, a parent-side Writer owns the file sinks. Workers attach to the Writer and submit log records through IPC. This centralizes file ownership and exposes delivery-state counters such as accepted, delivered, rejected, dropped, and unexplained-lost.
+
+The Writer shutdown path is bounded: it attempts to drain and join within a timeout, emits a visible warning if drain is incomplete, and avoids hanging the host process indefinitely.
 
 For setup code, the `multiprocessing` context rules, pool initializer, `ProcessPoolExecutor` integration, Windows spawn caveats, custom log levels, attach/detach lifecycle, environment-variable knobs, and shutdown handling, see [`examples/12_multiprocess_logging.md`](examples/12_multiprocess_logging.md).
 
@@ -229,11 +232,13 @@ Suggested reading paths:
 
 D-SafeLogger is competitive in the selected single-process async benchmark runs. In multiprocess benchmarks, raw throughput is not the differentiator; parent-side file output and classified delivery-state accounting are.
 
+The benchmark suite also includes multiprocess resilience profiles, such as sink-unavailable, burst backpressure, worker crash, mixed worker behavior, and shutdown behavior. These runs are not throughput claims; they check whether attempted records can be accounted for as delivered, known-rejected, known-dropped, or unexplained-lost.
+
 See [BENCHMARK.md](BENCHMARK.md) for the selected runs, methodology, and the explicit "what to claim / what not to claim" boundaries, and [`benchmarks/summary/`](benchmarks/summary/) for the published summaries.
 
 ## Testing / Quality
 
-The release gate runs the full dev test suite across Windows, macOS, and Linux on Python 3.11-3.14. Publication checks also verify generated API docs, public design documents, benchmark summaries, and package build output.
+The release gate runs the full dev test suite across Windows, macOS, and Linux on Python 3.11-3.14. CI also runs Ubuntu free-threaded CPython `3.13t` and `3.14t` compatibility jobs with `PYTHON_GIL=0`. Publication checks also verify generated API docs, public design documents, benchmark summaries, and package build output.
 
 See [TESTING.md](TESTING.md) for details.
 

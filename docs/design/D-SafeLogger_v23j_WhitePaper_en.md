@@ -3473,7 +3473,7 @@ D-SafeLogger's three-layer pipeline has observable differentiation in the follow
 ### 6.12 Latest status summary by library
 | Item | D-SafeLogger v23j | stdlib `logging` | Loguru 0.7.3 | structlog 25.5.0 | picologging 0.9.3 | Eliot 1.18.0 | Logbook 1.9.2 | logfire 4.32.1 | OTel SDK 1.41.1 |
 |---|---|---|---|---|---|---|---|---|---|
-| Latest release date | (v23j/0.2.0, as of this report) | Python 3.14 | 2024-12-06 | 2025-10-27 | 2024-09-13 (GitHub) | 2026-05-07 | — | (4.32.1) | (1.41.1) |
+| Latest release date | (v23j/0.2.1, as of this report) | Python 3.14 | 2024-12-06 | 2025-10-27 | 2024-09-13 (GitHub) | 2026-05-07 | — | (4.32.1) | (1.41.1) |
 | License | Apache 2.0 | PSF | MIT | MIT or Apache-2.0 | MIT | Apache 2.0 | BSD-3-Clause | MIT | Apache-2.0 |
 | Python requirements | >=3.11 | (Python itself) | >=3.5,<4 | >=3.8 | >=3.7 | >=3.10.0 | >=3.9 | >=3.9 | >=3.9 |
 | Number of runtime dependencies | **0** | 0 | 3 (conditional) | 1 (conditional) | 0 | 4 | 1 | 8 | 3 |

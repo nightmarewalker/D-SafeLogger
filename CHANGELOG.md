@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-05-21
+
 ### Added
 - Type validation as a CI quality gate: `mypy` and `pyright` are now required dev dependencies; `publication-checks` runs `uv run mypy src` and `uv run pyright src` on every push.
 - `scripts/install_built_wheel.py` — helper for installing the freshly built wheel into the uv-managed venv before running `pyright --verifytypes` against the packaged module (rather than the editable source tree).

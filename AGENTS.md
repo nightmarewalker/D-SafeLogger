@@ -8,7 +8,7 @@ This guide gives AI agents the current project context, quality gates, and bench
 
 ## Current Release Status
 
-- Current target release: `0.2.1`
+- Current target release: `0.2.2`
 - Current import name: `dsafelogger`
 - Latest pre-publish review status (2026-05-07): **GO-with-fixes**, with v23j follow-up fixes applied locally.
 - Resolved release blockers:

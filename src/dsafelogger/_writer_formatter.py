@@ -42,7 +42,7 @@ _KIND_MAP: dict[type, str] = {
 }
 
 # Map style class names (from logging internals) to style characters.
-_STYLE_CLASS_TO_CHAR: dict[str, str] = {
+_STYLE_CLASS_TO_CHAR: dict[str, Literal['%', '{', '$']] = {
     'PercentStyle': '%',
     'StrFormatStyle': '{',
     'StringTemplateStyle': '$',

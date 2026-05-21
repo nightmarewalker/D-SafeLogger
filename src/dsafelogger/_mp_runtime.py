@@ -522,6 +522,8 @@ class WriterRuntime:
         with self._reopen_lock:
             try:
                 count = 0
+                from dsafelogger._handler import ReopenableHandler
+
                 seen: set[int] = set()
                 for handlers in self._sink_groups.values():
                     for h in handlers:
@@ -529,7 +531,7 @@ class WriterRuntime:
                         if hid in seen:
                             continue
                         seen.add(hid)
-                        if hasattr(h, 'reopen'):
+                        if isinstance(h, ReopenableHandler):
                             h.reopen()
                             count += 1
                 if count == 0:

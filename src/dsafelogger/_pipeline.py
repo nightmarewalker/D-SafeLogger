@@ -8,10 +8,11 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypedDict
 
+from dsafelogger._constants import BUILTIN_SENSITIVE_KEYWORDS
 from dsafelogger._transport import Transport, TransportFactory
 
 
@@ -43,7 +44,7 @@ class ResolvedConfig:
     color_stream: bool
     module_configs: dict[str, dict]
     color_overrides: dict[str, str]
-    sensitive_keywords: frozenset[str] = field(default_factory=frozenset)
+    sensitive_keywords: frozenset[str] = BUILTIN_SENSITIVE_KEYWORDS
 
 
 class Pipeline:
@@ -89,13 +90,15 @@ class Pipeline:
         Returns:
             Number of file sinks successfully reopened.
         """
+        from dsafelogger._handler import ReopenableHandler
+
         seen: set[int] = set()
         count = 0
         for h in self._collect_file_handlers():
             hid = id(h)
             if hid not in seen:
                 seen.add(hid)
-                if hasattr(h, 'reopen'):
+                if isinstance(h, ReopenableHandler):
                     h.reopen()  # may raise ValueError for non-NoneStrategy
                     count += 1
         return count
@@ -122,7 +125,6 @@ class PipelineBuilder:
         )
         from dsafelogger._handler import AppendOnlyFileHandler
         from dsafelogger._routing import create_strategy
-        from dsafelogger._constants import BUILTIN_SENSITIVE_KEYWORDS
 
         sensitive_keywords = config.sensitive_keywords or BUILTIN_SENSITIVE_KEYWORDS
 

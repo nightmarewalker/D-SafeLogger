@@ -34,23 +34,23 @@ class DSafeQueueHandler(logging.handlers.QueueHandler):
 
         # Context snapshot: O(1) reference to FrozenContext (MappingProxyType).
         # No dict allocation: this is the intended design for cross-thread hand-off.
-        record._ds_context = _snapshot_context()  # type: ignore[attr-defined]
+        record._ds_context = _snapshot_context()
 
         # Diagnostic snapshot (if diagnose is enabled)
         if _constants._diagnose_enabled and record.exc_info and record.exc_info[1]:
             # Snapshot exception text
-            record._ds_exc_text = ''.join(  # type: ignore[attr-defined]
+            record._ds_exc_text = ''.join(
                 traceback.format_exception(*record.exc_info)
             )
             # Snapshot f_locals frames
-            record._ds_diag_frames = self._snapshot_frames(  # type: ignore[attr-defined]
+            record._ds_diag_frames = self._snapshot_frames(
                 record.exc_info,
                 _constants._resolved_sensitive_keywords,
             )
         else:
             # Fast path: just exc_text for non-diagnose
             if record.exc_info and record.exc_info[1]:
-                record._ds_exc_text = ''.join(  # type: ignore[attr-defined]
+                record._ds_exc_text = ''.join(
                     traceback.format_exception(*record.exc_info)
                 )
 
@@ -102,9 +102,9 @@ class DSafeQueueListener(logging.handlers.QueueListener):
         Places sentinel and waits for thread to finish.
         """
         self.enqueue_sentinel()
-        if self._thread is not None:  # type: ignore[attr-defined]
-            self._thread.join(timeout=timeout)  # type: ignore[attr-defined]
-            if self._thread.is_alive():  # type: ignore[attr-defined]
+        if self._thread is not None:
+            self._thread.join(timeout=timeout)
+            if self._thread.is_alive():
                 print(
                     f'[D-SafeLogger] Warning: QueueListener did not stop '
                     f'within {timeout}s.',

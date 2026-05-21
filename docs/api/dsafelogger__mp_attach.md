@@ -39,7 +39,7 @@ Restart pump threads that were lost due to a post-fork in the parent process.
 
 ### `_same_process_identity(state: 'MPProcessState') -> 'bool'`
 
-### `_validate_attach_ack(ack: 'dict[str, Any]', *, expected_protocol_version: 'int', expected_registry_hash: 'str') -> 'None'`
+### `_validate_attach_ack(ack: 'ControlAck', *, expected_protocol_version: 'int', expected_registry_hash: 'str') -> 'None'`
 
 ### `_validate_bootstrap_context(ctx: 'BootstrapContext') -> 'None'`
 

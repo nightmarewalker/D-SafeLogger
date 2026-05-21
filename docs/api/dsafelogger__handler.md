@@ -24,3 +24,15 @@ Public methods:
 - `emit(self, record: 'logging.LogRecord') -> 'None'`
 - `flush(self) -> 'None'`
 - `reopen(self) -> 'None'`
+
+### `ReopenableHandler(*args, **kwargs)`
+
+Protocol for logging handlers that support external rotation reopen.
+
+`isinstance(h, ReopenableHandler)` narrows `logging.Handler` references
+to those that implement `reopen()`, replacing `hasattr(h, 'reopen')`
+for static type checking.
+
+Public methods:
+
+- `reopen(self) -> 'None'`

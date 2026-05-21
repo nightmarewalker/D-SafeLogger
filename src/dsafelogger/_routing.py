@@ -63,7 +63,7 @@ class NoneStrategy(RoutingStrategy):
         return False
 
     def advance(self) -> Path:
-        pass
+        return self.get_current_path()
 
 
 class DailyStrategy(RoutingStrategy):

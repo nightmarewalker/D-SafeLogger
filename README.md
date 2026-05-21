@@ -247,7 +247,7 @@ See [TESTING.md](TESTING.md) for details.
 - Python: 3.11 or newer.
 - OS: Windows, macOS, and Linux.
 - Runtime dependencies: none.
-- Typing: includes `py.typed`.
+- Typing: includes `py.typed`; CI checks `mypy`, `pyright`, typing smoke tests, and 100% public type completeness with `pyright --verifytypes`. See [TESTING.md](TESTING.md).
 - API docs: [`docs/api/`](docs/api/).
 - Design docs: [`docs/design/`](docs/design/).
 - Distribution name is `d-safelogger` (with hyphen); import name is `dsafelogger` (no separator).

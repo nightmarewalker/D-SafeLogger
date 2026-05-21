@@ -212,6 +212,7 @@ def cmd_tail(
                     print(line, end='')
                 position = file_handle.tell()
             else:
+                assert file_handle is not None
                 file_handle.seek(position)
                 new_lines = file_handle.readlines()
                 for line in new_lines:

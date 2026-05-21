@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Type validation as a CI quality gate: `mypy` and `pyright` are now required dev dependencies; `publication-checks` runs `uv run mypy src` and `uv run pyright src` on every push.
+- `scripts/install_built_wheel.py` — helper for installing the freshly built wheel into the uv-managed venv before running `pyright --verifytypes` against the packaged module (rather than the editable source tree).
+- `scripts/check_type_completeness.py` — threshold gate for `pyright --verifytypes dsafelogger --ignoreexternal`; CI now requires 100% public type completeness from the built wheel.
+- `scripts/check_distribution_contents.py` — standalone script replacing the inline heredoc in `publish.yml`; adds `dsafelogger/py.typed` (wheel) and `src/dsafelogger/py.typed` (sdist) to required-path checks. Also wired into `ci.yml` `publication-checks`.
+- `tests/typing_smoke/public_api_smoke.py` — pyright-only smoke test covering `ConfigureLogger`, `GetLogger`, `contextualize`, and `mp.ConfigureLogger` / `mp.GetWorkerInitializer` from a user import perspective. The directory is named `typing_smoke` (not `typing`) to avoid shadowing the stdlib `typing` module in spawn child processes. Not collected by pytest (filename does not match `test_*.py`); checked by `uv run pyright tests/typing_smoke` in `publication-checks`.
+- `dsafelogger._handler.ReopenableHandler` — `@runtime_checkable` Protocol that narrows `logging.Handler` references to those exposing `reopen()`; replaces internal `hasattr(h, 'reopen')` checks for static type checking.
+
+### Changed
+- `dsafelogger._pipeline.ResolvedConfig.sensitive_keywords` now defaults to `BUILTIN_SENSITIVE_KEYWORDS` directly (previously `field(default_factory=frozenset)`). Behaviour is preserved by the existing `or BUILTIN_SENSITIVE_KEYWORDS` consumer fallback; the API docs now show the concrete default value rather than `<factory>`.
+- `dsafelogger._mp_protocol.LogEvent` TypedDict fields `process`, `processName`, `thread`, `threadName` are now `int | None` / `str | None`, aligning with stdlib `logging.LogRecord` semantics (None is a legal value for these attributes).
+- `dsafelogger._formatter.DSafeFormatter.__init__` `style` parameter is now typed `Literal['%', '{', '$']` instead of `str`, matching `logging.Formatter`.
+
+### Fixed
+- `dsafelogger._routing.NoneStrategy.advance()` now returns the current path instead of implicitly returning `None`, satisfying its `Path` return-type contract (no observable behaviour change; `should_switch()` always returns `False` so the method is unreachable in production).
+- `dsafelogger._cli` tail follow loop asserts that the open file handle is non-`None` before reuse (defensive narrowing; the assert is unreachable in normal execution).
+- `dsafelogger._shutdown()` acquires the root logger reference before the `try` block so the `finally` block always has it available, even if an exception is raised before the original assignment site.
+
+### Internal
+- Removed 19 stale `# type: ignore[...]` comments that mypy 2.1 no longer requires.
+- Annotated 4 previously untyped functions (`_levels._make_log_method`, `_color.ColorStreamHandler.__init__`, `_transport.TransportFactory.create`).
+- `dsafelogger._mp_queue.TrackedQueue.__getstate__` / `__setstate__` are now explicitly marked `# type: ignore[override]` with a comment documenting the intentional `_QueueState` extension; cross-platform `qsize()` and `empty()` are coerced via `int(...)` / `bool(...)` to satisfy `warn_return_any`.
+- `dsafelogger._mp_attach._validate_attach_ack` and `dsafelogger.mp._validate_bootstrap_ready_ack` now accept `ControlAck` TypedDict directly (previously `dict[str, Any]` / `dict[str, object]`).
+- `pyproject.toml` adds `[tool.pyright]` (basic mode, `include = ["src"]`).
+- `TESTING.md` gains a Type Validation section describing the local-green-before-push policy, recorded versions, and the private module surface rule.
+- `README.md` / `README_ja.md` typing bullet updated to mention the CI type-check gate.
+- `CONTRIBUTING.md` adds `uv run mypy src` / `uv run pyright src` to the required PR pre-flight commands and documents the private module surface policy.
+- Public v23j design documents now describe the 0.2.2 type-validation gate, including source typing, `tests/typing_smoke`, built-wheel verifytypes, and the stdlib `typing` shadowing guard.
+- API docs regenerated for `_color`, `_formatter`, `_handler`, `_mp_attach`, `_pipeline`.
+
 ## [0.2.1] - 2026-05-20
 
 ### Fixed

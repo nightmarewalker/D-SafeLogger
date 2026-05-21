@@ -2479,3 +2479,7 @@ This design prevents the host process from permanently blocking even if an unkno
 ### v23j Publication Sync Addendum
 
 Pre-publication synchronization includes coverage regeneration, API docs regeneration, addition of formal MP/external rotation for examples, enhancement of GitHub workflow gate, and readiness check of `docs/design/` publication design document. These are public artifact synchronizations that do not change the runtime behavior and keep the release version as `0.2.0`.
+
+### v23j Type Validation CI Addendum
+
+For the 0.2.2 pre-publication quality gate, CI adds type validation for the `py.typed` distribution. Source typing is checked with `mypy src` and `pyright src`, user-perspective smoke typing is checked with `pyright tests/typing_smoke`, and packaged typing is checked from the installed built wheel with `pyright --verifytypes dsafelogger --ignoreexternal` at a 100% completeness threshold. The verifytypes step uses `uv run --no-sync` so the wheel install is not replaced by the editable install before verification. The smoke-test directory is named `tests/typing_smoke/`, not `tests/typing/`, to avoid shadowing the standard-library `typing` module in spawn workers. These additions change only the public quality gate, not runtime behavior; the release-version bump is deferred until release readiness is confirmed.

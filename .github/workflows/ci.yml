@@ -76,6 +76,18 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
+      - name: Record pyright version
+        run: uv run pyright --version
+
+      - name: Run mypy
+        run: uv run mypy src
+
+      - name: Run pyright
+        run: uv run pyright src
+
+      - name: Check typing smoke test
+        run: uv run pyright tests/typing_smoke
+
       - name: Check API docs
         run: uv run python scripts/generate_api_docs.py --check
 
@@ -85,5 +97,21 @@ jobs:
       - name: Check benchmark summaries
         run: uv run python benchmarks/update_summary.py --check
 
+      - name: Clean dist
+        run: rm -rf dist
+
       - name: Build package
         run: uv build
+
+      - name: Check distribution contents
+        run: uv run python scripts/check_distribution_contents.py
+
+      - name: Install built wheel for verifytypes
+        run: uv run python scripts/install_built_wheel.py
+
+      - name: Check type completeness
+        run: uv run --no-sync python scripts/check_type_completeness.py --min-score 100
+
+      - name: Restore editable install
+        if: always()
+        run: uv sync --reinstall --group dev

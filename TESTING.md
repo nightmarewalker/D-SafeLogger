@@ -129,6 +129,60 @@ Important expectations:
 - Tests must not rely on `multiprocessing.Queue.empty()` for correctness. Use timeout-based `get()` or fake/recording queues instead.
 - CloseMarker drain, control-plane ACKs, backpressure, reject counters, partial delivery, and bounded shutdown warning paths are covered by MP tests.
 
+## Type Validation
+
+`D-SafeLogger` ships with `py.typed` (PEP 561), so source typing and public type completeness are part of the standard quality gate. CI runs `mypy`, `pyright`, a typing smoke test, and a 100% `pyright --verifytypes` gate on every push.
+
+### Tooling
+
+- `mypy>=2.1` — strict-ish config (`disallow_untyped_defs = true`, `warn_unused_ignores = true`, `warn_return_any = true`).
+- `pyright>=1.1.409` — `typeCheckingMode = "basic"` with `include = ["src"]`.
+
+### Required commands (PR pre-flight)
+
+```bash
+uv sync --group dev
+uv run pyright --version    # record first
+uv run mypy src             # → 0 errors
+uv run pyright src          # → 0 errors
+uv run pyright tests/typing_smoke # → 0 errors
+```
+
+Local green (`0 errors` from both tools) is the precondition for pushing. CI runs the same commands and treats any error as a hard fail.
+
+Package-level type completeness is checked from the built wheel, not the editable source tree:
+
+```bash
+uv build
+uv run python scripts/install_built_wheel.py
+uv run --no-sync python scripts/check_type_completeness.py --min-score 100
+uv sync --reinstall
+```
+
+Use `uv run --no-sync` for the completeness check so the wheel install is not replaced by the editable project before `pyright --verifytypes` runs.
+
+### Latest local validation (2026-05-21 / Python 3.14.3 / Windows)
+
+| Tool | Version | Result |
+|---|---|---|
+| `mypy` | 2.1.0 | `Success: no issues found in 27 source files` |
+| `pyright` | 1.1.409 | `0 errors, 0 warnings, 0 informations` |
+| `pyright --verifytypes dsafelogger --ignoreexternal` | 1.1.409 | `Type completeness score: 100%` (10 public symbols, 23 referenced internal symbols — all known type) |
+
+### Package name vs. type checker target
+
+D-SafeLogger uses three name forms — be careful when invoking type tools:
+
+- PyPI metadata: `D-SafeLogger`
+- Python import / `verifytypes` target: `dsafelogger`
+- Wheel filename: `d_safelogger-*.whl`
+
+For `pyright --verifytypes`, always pass `dsafelogger` (the import name).
+
+### Private module surface policy
+
+Names starting with a leading underscore (`_constants.MASK_STRING`, `_constants._resolved_sensitive_keywords`, `_pipeline.ResolvedConfig`, `_async.DSafeQueueHandler`, etc.) are **private** even though `py.typed` exposes them to user type checkers. Library consumers MUST NOT depend on private symbols; they may change without notice in PATCH or MINOR releases. Only names re-exported from `dsafelogger` / `dsafelogger.mp` `__init__.py` are public.
+
 ## Free-Threaded Python
 
 GitHub Actions runs Ubuntu free-threaded CPython `3.13t` and `3.14t` jobs with `PYTHON_GIL=0`.
@@ -166,13 +220,21 @@ See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 The CI workflow also runs publication checks on Ubuntu/Python 3.13:
 
 ```bash
+uv run pyright --version
+uv run mypy src
+uv run pyright src
+uv run pyright tests/typing_smoke
 uv run python scripts/generate_api_docs.py --check
 uv run python scripts/check_design_docs_sync.py
 uv run python benchmarks/update_summary.py --check
 uv build
+uv run python scripts/check_distribution_contents.py
+uv run python scripts/install_built_wheel.py
+uv run --no-sync python scripts/check_type_completeness.py --min-score 100
+uv sync --reinstall --group dev
 ```
 
-The publish workflow repeats these checks, verifies the git tag matches the package version, runs the full test suite, and only then publishes.
+The publish workflow repeats release document, benchmark, build, distribution-content, metadata, and full-suite checks, verifies the git tag matches the package version, and only then publishes.
 
 ## Documentation Checks
 

@@ -7,6 +7,7 @@ import os
 import sys
 
 import threading
+from typing import IO
 
 from dsafelogger._formatter import _DisplayRecordProxy, _make_proxy_tls
 from dsafelogger._levels import get_all_color_map, get_all_level_map
@@ -35,7 +36,7 @@ class ColorStreamHandler(logging.StreamHandler):
 
     def __init__(
         self,
-        stream=None,
+        stream: IO[str] | None = None,
         color_enabled: bool = True,
         color_overrides: dict[str, str] | None = None,
     ) -> None:

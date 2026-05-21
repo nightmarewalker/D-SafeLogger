@@ -9,7 +9,7 @@
 
 v23j は v23h 完了時点の OSS 公開前指摘に対するユーザー判断に基づく修正版である。v23h の sink 分類 / bounded shutdown 契約を維持した上で、公開前のテスト契約・MP E2E・benchmark 成果物管理を確定する。
 
-現行 v23j のローカル検証 baseline は Python 3.14.3 / Windows 上の結果であり、`658 passed, 3 skipped`（`661` collected）である。fork E2E は POSIX-only、Windows spawn E2E は Windows-only であるため、OS によって skipped 数は変動し得る。
+現行 v23j のローカル検証 baseline は Python 3.14.3 / Windows 上の結果であり、`658 passed, 3 skipped`（`661` collected）である。fork E2E は POSIX-only、Windows spawn E2E は Windows-only であるため、OS によって skipped 数は変動し得る。0.2.2 向けの公開前品質ゲートでは、これに加えて `mypy src` / `pyright src` / `pyright tests/typing_smoke` / built wheel に対する `pyright --verifytypes dsafelogger --ignoreexternal` 100% completeness gate を実行する。
 
 v23h から継続する動作変更は以下:
 
@@ -34,6 +34,8 @@ v23j で追加する公開前方針は以下:
 16. merge 後の設定正規化・検証を single-process / module-specific / multiprocess で共通化する
 17. routing / 世代管理 / hash の無効組み合わせは warning 補正ではなく `ValueError` とする
 18. `structured=True` と formatter 指定、未登録 level、数値範囲不正、Python API bool 型不正を fail-fast 検証する
+19. `py.typed` 配布に対応し、source typing (`mypy src`, `pyright src`) と packaged typing (`pyright --verifytypes dsafelogger --ignoreexternal`) を公開前品質ゲートへ含める
+20. 利用者視点の public API typing smoke test は `tests/typing_smoke/` に置き、`tests/typing/` という名前は標準ライブラリ `typing` shadow を避けるため使わない
 
 ---
 
@@ -71,6 +73,10 @@ v23j で追加する公開前方針は以下:
 | DOD-v23j-28 | mp の validation は single-process と同じ共通検証を使い、`structured=True + file_fmt/console_fmt` も拒否する |
 | DOD-v23j-29 | mp module-specific `level` は worker attach 側 logger level に反映する |
 | DOD-v23j-30 | Python API bool 引数に `str` など bool 以外を渡した場合は `TypeError` |
+| DOD-v23j-type-31 | `uv run mypy src` と `uv run pyright src` が 0 errors で完了する |
+| DOD-v23j-type-32 | `uv run pyright tests/typing_smoke` が 0 errors で完了し、`tests/typing_smoke/public_api_smoke.py` は pytest default collection に含まれない |
+| DOD-v23j-type-33 | built wheel install 後、`uv run --no-sync python scripts/check_type_completeness.py --min-score 100` が `pyright --verifytypes dsafelogger --ignoreexternal` の 100% completeness を確認する |
+| DOD-v23j-type-34 | `tests/typing_smoke/` の名称により spawn worker で stdlib `typing` を shadow しない |
 
 ---
 
@@ -108,6 +114,10 @@ v23j で追加する公開前方針は以下:
 | DOD-v23j-28 | `tests/test_mp_configure.py::TestMpConfigureLogger::test_structured_and_file_fmt_mutual_exclusion`、`test_config_dict_invalid_default_level_raises` |
 | DOD-v23j-29 | `tests/test_mp_configure.py::TestMpConfigureLogger::test_module_level_propagates_to_attached_logger` |
 | DOD-v23j-30 | `tests/test_coverage_boost.py::TestConfigureAdvanced::test_enable_hash_wrong_type` と追加 bool 型検査 |
+| DOD-v23j-type-31 | `uv run mypy src` / `uv run pyright src` |
+| DOD-v23j-type-32 | `uv run pyright tests/typing_smoke` / `uv run pytest tests --collect-only -q` |
+| DOD-v23j-type-33 | `scripts/install_built_wheel.py` / `scripts/check_type_completeness.py --min-score 100` |
+| DOD-v23j-type-34 | `tests/typing_smoke/public_api_smoke.py` の配置と spawn 系 MP tests (`tests/test_mp_integration.py`, `tests/test_mp_spawn_windows.py`) |
 
 ---
 
@@ -118,6 +128,18 @@ v23j で追加する公開前方針は以下:
 ```bash
 uv sync --group dev
 uv run pytest tests -v
+uv run mypy src
+uv run pyright src
+uv run pyright tests/typing_smoke
+```
+
+packaged typing の completeness は built wheel を対象に検証する。`install_built_wheel.py` 実行後の verifytypes は editable install へ戻らないよう `uv run --no-sync` を使う。
+
+```bash
+uv build
+uv run python scripts/install_built_wheel.py
+uv run --no-sync python scripts/check_type_completeness.py --min-score 100
+uv sync --reinstall
 ```
 
 補助的な切り分け用途として以下を許可するが、release 判定の代替にはしない。
@@ -140,7 +162,7 @@ v23j では benchmark 公開成果物の管理方式を変更する。runner は
 
 ### v23j Publication Sync Addendum
 
-公開前同期の追加 DOD として、coverage 再生成、API docs `--check`、design docs sync check、GitHub CI / publish preflight、examples の formal MP / external rotation 追加を検証対象に含める。これらは runtime behavior を変更せず、release `0.2.0` の公開成果物と品質ゲートを同期するための補助検証である。
+公開前同期の追加 DOD として、coverage 再生成、API docs `--check`、design docs sync check、GitHub CI / publish preflight、examples の formal MP / external rotation 追加を検証対象に含める。0.2.2 向けにはさらに source typing、typing smoke、built wheel に対する verifytypes 100% completeness gate を追加する。これらは runtime behavior を変更せず、公開成果物と品質ゲートを同期するための補助検証である。
 
 ---
 

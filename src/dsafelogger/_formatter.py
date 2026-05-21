@@ -17,7 +17,7 @@ import logging
 import sys
 import threading
 import traceback
-from typing import Any
+from typing import Any, Literal
 
 from dsafelogger._constants import (
     DEFAULT_DATEFMT,
@@ -119,7 +119,7 @@ class DSafeFormatter(logging.Formatter):
         self,
         fmt: str | None = None,
         datefmt: str | None = None,
-        style: str = '%',
+        style: Literal['%', '{', '$'] = '%',
     ) -> None:
         # For % style, fall back to the D-SafeLogger default format when fmt is
         # omitted.  For { and $ styles, pass fmt=None so that logging picks the
@@ -147,7 +147,7 @@ class DSafeFormatter(logging.Formatter):
         proxy.__dict__.clear()
         proxy.__dict__.update(record.__dict__)
         proxy.__dict__['levelname'] = abbr
-        result = super().format(proxy)
+        result: str = super().format(proxy)
 
         # Append context suffix.
         # If _ds_context attribute is present (set by async prepare() or sync emit()),
@@ -155,7 +155,7 @@ class DSafeFormatter(logging.Formatter):
         # Fall back to get_context() only when the attribute is absent (direct
         # logging.Handler path without D-SafeLogger transport).
         if hasattr(record, '_ds_context'):
-            ctx = record._ds_context  # type: ignore[attr-defined]
+            ctx = getattr(record, '_ds_context')
         else:
             ctx = get_context()
         if ctx:
@@ -186,7 +186,7 @@ class StructuredFormatter(logging.Formatter):
 
         # Context as top-level fields
         if hasattr(record, '_ds_context'):
-            ctx = record._ds_context  # type: ignore[attr-defined]
+            ctx = getattr(record, '_ds_context')
         else:
             ctx = get_context()
         if ctx:
@@ -224,7 +224,7 @@ class DiagnosticFormatter(DSafeFormatter):
         self._sensitive_keywords = sensitive_keywords or BUILTIN_SENSITIVE_KEYWORDS
 
     def format(self, record: logging.LogRecord) -> str:
-        result = super().format(record)
+        result: str = super().format(record)
 
         # Use snapshot if available (from DSafeQueueHandler)
         snapshot_text = getattr(record, '_ds_exc_text', None)
@@ -333,7 +333,7 @@ class DiagnosticStructuredFormatter(StructuredFormatter):
 
         # Context
         if hasattr(record, '_ds_context'):
-            ctx = record._ds_context  # type: ignore[attr-defined]
+            ctx = getattr(record, '_ds_context')
         else:
             ctx = get_context()
         if ctx:

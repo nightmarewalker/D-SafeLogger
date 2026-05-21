@@ -12,7 +12,7 @@ Enable ANSI escape sequences on Windows 10+.
 
 ## Classes
 
-### `ColorStreamHandler(stream=None, color_enabled: 'bool' = True, color_overrides: 'dict[str, str] | None' = None) -> 'None'`
+### `ColorStreamHandler(stream: 'IO[str] | None' = None, color_enabled: 'bool' = True, color_overrides: 'dict[str, str] | None' = None) -> 'None'`
 
 StreamHandler with ANSI color codes for log levels.
 

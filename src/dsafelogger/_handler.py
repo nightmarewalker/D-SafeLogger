@@ -4,12 +4,25 @@ from __future__ import annotations
 
 import logging
 import sys
+import threading
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 from dsafelogger._integrity import HashWorker
 from dsafelogger._purge import ArchiveWorker, PurgeWorker
 from dsafelogger._routing import RoutingStrategy
+
+
+@runtime_checkable
+class ReopenableHandler(Protocol):
+    """Protocol for logging handlers that support external rotation reopen.
+
+    `isinstance(h, ReopenableHandler)` narrows `logging.Handler` references
+    to those that implement `reopen()`, replacing `hasattr(h, 'reopen')`
+    for static type checking.
+    """
+
+    def reopen(self) -> None: ...
 
 
 class AppendOnlyFileHandler(logging.Handler):
@@ -106,6 +119,7 @@ class AppendOnlyFileHandler(logging.Handler):
             if not self._enable_hash:
                 return
         elif self._backup_count > 0:
+            worker: threading.Thread
             if self._archive_mode:
                 worker = ArchiveWorker(
                     directory=old_path.parent,
@@ -131,13 +145,13 @@ class AppendOnlyFileHandler(logging.Handler):
             return
 
         if self._enable_hash:
-            worker = HashWorker(
+            hash_worker = HashWorker(
                 file_path=old_path,
                 manifest_path=Path(self._manifest_path) if self._manifest_path else None,
                 unregister_fn=_unregister_worker,
             )
-            _register_worker(worker)
-            worker.start()
+            _register_worker(hash_worker)
+            hash_worker.start()
 
     def emit(self, record: logging.LogRecord) -> None:
         """Write log record to file, switching if needed."""

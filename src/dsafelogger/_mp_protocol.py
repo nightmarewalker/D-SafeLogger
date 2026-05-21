@@ -51,10 +51,10 @@ class LogEvent(TypedDict):
     created: float
     msecs: float
     relativeCreated: float
-    process: int
-    processName: str
-    thread: int
-    threadName: str
+    process: int | None
+    processName: str | None
+    thread: int | None
+    threadName: str | None
     _ds_route: str
     _ds_context: dict[str, Any]
     _ds_exc_text: str | None
@@ -100,7 +100,7 @@ def _serialize_record(record: logging.LogRecord, ds_route: str) -> LogEvent:
     """Snapshot a LogRecord into a picklable LogEvent on the producer thread."""
     # Context: from record (snapshot already taken) or current TLS
     if hasattr(record, '_ds_context'):
-        raw_ctx = record._ds_context  # type: ignore[attr-defined]
+        raw_ctx = getattr(record, '_ds_context')
         ctx: dict[str, Any] = dict(raw_ctx) if raw_ctx else {}
     else:
         snap = _snapshot_context()
@@ -189,17 +189,17 @@ def _reconstruct_record(event: LogEvent) -> logging.LogRecord:
     }
     record = logging.makeLogRecord(d)
 
-    record._ds_route = event['_ds_route']  # type: ignore[attr-defined]
-    record._ds_context = event['_ds_context']  # type: ignore[attr-defined]
+    record._ds_route = event['_ds_route']
+    record._ds_context = event['_ds_context']
 
     exc_text = event.get('_ds_exc_text')
     if exc_text:
-        record._ds_exc_text = exc_text  # type: ignore[attr-defined]
+        record._ds_exc_text = exc_text
         record.exc_text = exc_text
 
     diag_frames = event.get('_ds_diag_frames')
     if diag_frames:
-        record._ds_diag_frames = diag_frames  # type: ignore[attr-defined]
+        record._ds_diag_frames = diag_frames
 
     for key, value in event['_ds_extra'].items():
         if key not in _STD_RECORD_KEYS and key not in _DS_INTERNAL_KEYS:

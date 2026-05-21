@@ -67,9 +67,14 @@ def _doc_summary(obj: Any) -> str:
 
 def _signature(obj: Any) -> str:
     try:
-        return str(inspect.signature(obj))
+        signature = inspect.signature(obj)
     except (TypeError, ValueError):
         return "(...)"
+    text = str(signature)
+    for parameter in signature.parameters.values():
+        if isinstance(parameter.default, frozenset):
+            text = text.replace(repr(parameter.default), _format_frozenset(parameter.default))
+    return text
 
 
 def _is_constant(name: str, value: Any) -> bool:
@@ -80,12 +85,16 @@ def _is_constant(name: str, value: Any) -> bool:
 
 def _format_value(value: Any) -> str:
     if isinstance(value, frozenset):
-        text = "frozenset({" + ", ".join(repr(item) for item in sorted(value, key=repr)) + "})"
+        text = _format_frozenset(value)
     else:
         text = repr(value)
     if len(text) > 80:
         text = text[:77] + "..."
     return text.replace("|", "\\|")
+
+
+def _format_frozenset(value: frozenset[Any]) -> str:
+    return "frozenset({" + ", ".join(repr(item) for item in sorted(value, key=repr)) + "})"
 
 
 def _module_members(module: ModuleType) -> tuple[list[tuple[str, Any]], list[tuple[str, Any]], list[tuple[str, Any]]]:

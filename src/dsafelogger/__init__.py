@@ -642,12 +642,12 @@ def _do_configure(
 
     from dsafelogger._pipeline import ResolvedConfig, PipelineBuilder
     
-    file_fmt = 'json' if args_config['structured'] else (
+    resolved_file_fmt: str | logging.Formatter = 'json' if args_config['structured'] else (
         args_config['file_fmt'] if args_config['file_fmt'] else (
             args_config['fmt'] if args_config['fmt'] else DEFAULT_FMT
         )
     )
-    console_fmt = 'json' if args_config['structured'] else (
+    resolved_console_fmt: str | logging.Formatter = 'json' if args_config['structured'] else (
         args_config['console_fmt'] if args_config['console_fmt'] else (
             args_config['fmt'] if args_config['fmt'] else DEFAULT_FMT
         )
@@ -656,8 +656,8 @@ def _do_configure(
     config = ResolvedConfig(
         pg_name=args_config['pg_name'],
         log_dir=log_path_obj,
-        file_fmt=file_fmt,
-        console_fmt=console_fmt,
+        file_fmt=resolved_file_fmt,
+        console_fmt=resolved_console_fmt,
         routing_mode=args_config['routing_mode'],
         routing_kwargs={
             'interval': args_config['interval'],
@@ -823,10 +823,13 @@ def _shutdown() -> None:
         pipeline_ref = _active_pipeline
         _active_pipeline = None
 
+    # Acquire root logger reference up-front so the finally block always has it
+    # (pyright narrowing: ensures `root` is not possibly unbound when accessed below).
+    root = logging.getLogger()
+
     # Phase B: Pipeline stop (handles worker joins and listener drains)
     try:
         # Detach pipeline from root logger
-        root = logging.getLogger()
         if pipeline_ref is not None:
             handler_to_remove = pipeline_ref.get_root_handler()
             if handler_to_remove in root.handlers:

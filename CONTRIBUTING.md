@@ -51,6 +51,9 @@ cd D-SafeLogger
 uv sync --group dev
 uv run pytest tests/ -v
 uv run ruff check src/ tests/
+uv run mypy src
+uv run pyright src
+uv run pyright tests/typing_smoke
 ```
 
 ## 6. Code Style
@@ -58,14 +61,17 @@ uv run ruff check src/ tests/
 - **PEP 8**, max **100** characters per line.
 - **ruff** for linting (`uv run ruff check src/ tests/`).
 - **Type hints required** — use Python 3.11+ `X | Y` union syntax.
+- **Typing must stay green**: `uv run mypy src`, `uv run pyright src`, and `uv run pyright tests/typing_smoke` must report `0 errors` locally before opening a PR. CI also enforces 100% public type completeness with `pyright --verifytypes` against the built wheel.
+- Private module surface (names starting with `_`, e.g. `dsafelogger._constants.MASK_STRING`) is **not** part of the public API even though `py.typed` exposes it to user type checkers. Do not encourage external dependence on these names; rename / reshape freely as needed.
 
 ## 7. Pull Request Process
 
 1. Create a feature branch from `main`.
 2. Add tests for new functionality.
 3. Ensure **all** tests pass: `uv run pytest tests/ -v`.
-4. Update documentation if needed.
-5. Submit a PR with a clear description referencing the accepted issue.
+4. Verify type checks pass: `uv run mypy src`, `uv run pyright src`, and `uv run pyright tests/typing_smoke` (all must report `0 errors`).
+5. Update documentation if needed.
+6. Submit a PR with a clear description referencing the accepted issue.
 
 ## License
 

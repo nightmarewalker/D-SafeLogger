@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import ctypes
 from multiprocessing.queues import Queue as _MPQueueBase
-from typing import Any
+from typing import Any, cast
 
 
 class TrackedQueue(_MPQueueBase):
@@ -43,14 +43,17 @@ class TrackedQueue(_MPQueueBase):
             self._native_qsize_supported = False
             self._tracked_count = ctx.Value(ctypes.c_long, 0)
 
-    def __getstate__(self) -> tuple:
-        return super().__getstate__() + (
+    def __getstate__(self) -> tuple:  # type: ignore[override]
+        # Intentionally extends multiprocessing.queues.Queue's _QueueState
+        # with (native_qsize_supported, tracked_count) for cross-platform qsize().
+        base_state = cast(tuple[Any, ...], super().__getstate__())
+        return base_state + (
             self._native_qsize_supported,
             self._tracked_count,
         )
 
-    def __setstate__(self, state: tuple) -> None:
-        super().__setstate__(state[:-2])
+    def __setstate__(self, state: tuple) -> None:  # type: ignore[override]
+        super().__setstate__(cast(Any, state[:-2]))
         self._native_qsize_supported = state[-2]
         self._tracked_count = state[-1]
 
@@ -85,9 +88,9 @@ class TrackedQueue(_MPQueueBase):
     def qsize(self) -> int:
         if self._native_qsize_supported:
             return super().qsize()
-        return self._tracked_count.value
+        return int(self._tracked_count.value)
 
     def empty(self) -> bool:
         if self._native_qsize_supported:
             return super().empty()
-        return self._tracked_count.value == 0
+        return bool(self._tracked_count.value == 0)

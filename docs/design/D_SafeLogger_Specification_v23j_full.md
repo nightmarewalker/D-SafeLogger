@@ -2496,3 +2496,7 @@ bounded wait (≤ timeout) -> visible warning (drain incomplete を可視化) ->
 ### v23j Publication Sync Addendum
 
 公開前同期として、coverage 再生成、API docs 再生成、examples の formal MP / external rotation 追加、GitHub workflow gate 強化、`docs/design/` 公開設計書の readiness check を対象に含める。これらは runtime behavior を変更しない公開成果物同期であり、release version は `0.2.0` のまま維持する。
+
+### v23j Type Validation CI Addendum
+
+0.2.2 向けの公開前品質ゲートとして、`py.typed` 配布に対応する型検証を CI に追加する。source typing は `mypy src` と `pyright src`、利用者視点の smoke test は `pyright tests/typing_smoke`、packaged typing は built wheel を install した上で `pyright --verifytypes dsafelogger --ignoreexternal` を 100% completeness threshold で検証する。verifytypes 実行時は editable install へ戻らないよう `uv run --no-sync` を使う。smoke test ディレクトリは spawn worker で標準ライブラリ `typing` を shadow しないよう `tests/typing_smoke/` とし、`tests/typing/` は使わない。これらは runtime behavior を変更しない公開品質ゲートの追加であり、release version bump は release readiness 確定時に行う。

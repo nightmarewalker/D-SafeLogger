@@ -59,7 +59,7 @@ from dsafelogger._mp_control import (
     _send_control_request,
     _wait_control_ack,
 )
-from dsafelogger._mp_protocol import BootstrapContext
+from dsafelogger._mp_protocol import BootstrapContext, ControlAck
 from dsafelogger._mp_queue import TrackedQueue
 from dsafelogger._mp_runtime import WriterRuntime
 from dsafelogger._routing import create_strategy
@@ -299,7 +299,7 @@ def _mp_shutdown() -> None:
 
 
 def _validate_bootstrap_ready_ack(
-    ack: dict[str, object],
+    ack: ControlAck,
     *,
     expected_protocol_version: int,
     expected_registry_hash: str,

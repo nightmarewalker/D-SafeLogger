@@ -247,7 +247,7 @@ D-SafeLogger は、採用済みの単一プロセス async ベンチマークで
 - Python: 3.11 以上。
 - OS: Windows, macOS, Linux。
 - 実行時依存: なし。
-- 型情報: `py.typed` を同梱。
+- 型情報: `py.typed` を同梱。CI で `mypy` / `pyright`、typing smoke test、`pyright --verifytypes` による public type completeness 100% gate を検証。詳細は [TESTING.md](TESTING.md)。
 - API docs: [`docs/api/`](docs/api/)。
 - Design docs: [`docs/design/`](docs/design/)。
 - 配布パッケージ名は `d-safelogger` (ハイフン)、import 名は `dsafelogger` (区切りなし) です。

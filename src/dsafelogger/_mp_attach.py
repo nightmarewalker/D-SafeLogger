@@ -8,7 +8,7 @@ import sys
 import threading
 import uuid
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from dsafelogger._context import _snapshot_context
 from dsafelogger._mp_control import (
@@ -19,12 +19,18 @@ from dsafelogger._mp_control import (
     _send_control_request,
     _wait_control_ack,
 )
-from dsafelogger._mp_protocol import BootstrapContext, CloseMarker, LogEvent, _serialize_record
+from dsafelogger._mp_protocol import (
+    BootstrapContext,
+    CloseMarker,
+    ControlAck,
+    LogEvent,
+    _serialize_record,
+)
 
 # ── Process-local state ──────────────────────────────────────────────────────
 
 _mp_lifecycle_lock = threading.RLock()
-_mp_runtime_state: MPProcessState | None = None  # type: ignore[name-defined]
+_mp_runtime_state: MPProcessState | None = None
 
 
 @dataclass
@@ -34,8 +40,8 @@ class MPProcessState:
     ctx: BootstrapContext
     client_id: str
     process_pid: int
-    root_transport: MPClientTransport  # type: ignore[name-defined]
-    module_transports: dict[str, MPClientTransport]  # type: ignore[name-defined]
+    root_transport: MPClientTransport
+    module_transports: dict[str, MPClientTransport]
 
 
 # ── Client-side transport ────────────────────────────────────────────────────
@@ -196,7 +202,7 @@ class MPClientTransport:
 
         def emit(self, record: logging.LogRecord) -> None:
             if not hasattr(record, '_ds_context'):
-                record._ds_context = _snapshot_context()  # type: ignore[attr-defined]
+                record._ds_context = _snapshot_context()
             self._transport._emit_record(record)
 
 
@@ -238,7 +244,7 @@ def _validate_registry_hash(registry_hash: str) -> None:
 
 
 def _validate_attach_ack(
-    ack: dict[str, Any],
+    ack: ControlAck,
     *,
     expected_protocol_version: int,
     expected_registry_hash: str,
@@ -352,7 +358,11 @@ def _do_attach(ctx: BootstrapContext) -> None:
         root_transport.start()
 
         module_transports: dict[str, MPClientTransport] = {}
-        for mod_name in ctx.resolved_config.get('module_routes', []):
+        module_routes = cast(
+            list[str],
+            ctx.resolved_config.get('module_routes', []),
+        )
+        for mod_name in module_routes:
             mt = MPClientTransport(
                 ctx, ds_route=f'module:{mod_name}', is_async=is_async
             )

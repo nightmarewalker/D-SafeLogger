@@ -43,7 +43,7 @@ in high-throughput multi-threaded scenarios.
 
 ## Classes
 
-### `DSafeFormatter(fmt: 'str | None' = None, datefmt: 'str | None' = None, style: 'str' = '%') -> 'None'`
+### `DSafeFormatter(fmt: 'str | None' = None, datefmt: 'str | None' = None, style: "Literal['%', '{', '$']" = '%') -> 'None'`
 
 Standard D-SafeLogger formatter with level abbreviation and context suffix.
 

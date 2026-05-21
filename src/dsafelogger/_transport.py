@@ -8,7 +8,7 @@ import abc
 import queue
 import logging
 import sys
-from typing import Sequence
+from typing import Any, Sequence
 
 from dsafelogger._constants import QUEUE_DRAIN_TIMEOUT_SEC
 from dsafelogger._context import _snapshot_context
@@ -155,7 +155,7 @@ class TransportFactory:
     def create(
         is_async: bool,
         handlers: Sequence[logging.Handler],
-        **kwargs,
+        **kwargs: Any,
     ) -> Transport:
         """Create the appropriate Transport.
 

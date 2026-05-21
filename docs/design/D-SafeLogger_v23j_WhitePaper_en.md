@@ -224,7 +224,7 @@ D-SafeLogger is a logging platform built on the Python standard library `logging
 - Target Python: 3.11 or higher (including **free-threaded build** of CPython 3.13 or higher)
 - Target OS: Windows / macOS / Linux
 - Runtime dependencies: None (Python standard library only)
-- Type information: Includes `py.typed`
+- Type information: Includes `py.typed`; CI verifies `mypy`, `pyright`, a typing smoke test, and a 100% public type-completeness gate with `pyright --verifytypes`
 #### 1.1.2 Positioning
 Official design document §1 defines the position of this module as follows.
 > This module is a lightweight, fast, and highly functional logging platform that is commonly used by all projects in the various Python ecosystems (D-Settings, DPySide, D-MessageRouter, etc.) provided by `D`. **The premise is that it will be released as a standalone OSS, but the top priority will be to operate it as a common platform for the "D Ecosystem" rather than to widely disseminate it**.
@@ -3872,6 +3872,7 @@ Facts that can be confirmed from `pyproject.toml` and `MANIFEST.in`:
 - The skipped count is platform-dependent because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
 - Coverage: terminal total **87%**, XML line-rate **88.97%**, branch-rate **81.46%**
 - multiprocess tests / OTel/structlog coexistence tests are included in the official quality gate
+- Type validation: public validation includes `mypy src`, `pyright src`, `pyright tests/typing_smoke`, and a 100% `pyright --verifytypes dsafelogger --ignoreexternal` completeness gate against the built wheel. The smoke-test directory is named `tests/typing_smoke/` to avoid shadowing the standard-library `typing` module.
 - free-threaded build test: `PYTHON_GIL=0 uvx --python cpython-3.13+freethreaded --from pytest pytest tests -v`
 #### 7.10.4 Release Management
 Public validation procedures:
@@ -4134,6 +4135,7 @@ Boundaries that public bench analysis actively enumerates:
 - Official test baseline: 658 passed / 3 skipped (661 collected, `uv run pytest tests -v`, Python 3.14.3 / Windows). The skipped count can vary by OS because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
 - Coverage: terminal total 87%, XML line-rate 88.97%, branch-rate 81.46%
 - multiprocess tests / OTel/structlog coexistence tests are included in the official quality gate
+- Type validation: public validation includes `mypy src`, `pyright src`, `pyright tests/typing_smoke`, and a 100% `pyright --verifytypes dsafelogger --ignoreexternal` completeness gate against the built wheel
 - free-threaded build test procedure included (`PYTHON_GIL=0 uvx ...`)
 - Internal synchronization verification on `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`
 - Fixed public representative session with `benchmarks/summary/manifest.json`
@@ -4168,7 +4170,7 @@ Based on the observed facts in this report as a whole, we have summarized the ob
 8. **Multiprocess raw throughput is led by stdlib logging**: In `root_p8`, D-SafeLogger reaches 63-75% of stdlib throughput. `BENCHMARK.md` states this clearly as a design tradeoff reflecting fixed costs in the specification (IPC + Writer dispatch). The multiprocess value of this library is not raw throughput, but delivery-state observability.
 9. **Classifies and explains 12/12 rows in the multiprocess resilience profile**: stdlib / loguru rows are marked with `observability_gap`. Delivery-state explainability is recorded as observability specific to this library.
 #### 8.8.5 Documentation/quality operations
-10. **Quality gate and internal synchronization verification scripts are in place**: 658 passed / 3 skipped on Python 3.14.3 / Windows (661 collected), coverage 87%, internal synchronization verification by `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`, public representative session fixation by `benchmarks/summary/manifest.json`. The skipped count can vary by OS. These are recorded as observable quality indicators when evaluating candidate libraries for introduction.
+10. **Quality gate and internal synchronization verification scripts are in place**: 658 passed / 3 skipped on Python 3.14.3 / Windows (661 collected), coverage 87%, `mypy` / `pyright` / typing smoke / `pyright --verifytypes` 100% completeness gate, internal synchronization verification by `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`, public representative session fixation by `benchmarks/summary/manifest.json`. The skipped count can vary by OS. These are recorded as observable quality indicators when evaluating candidate libraries for introduction.
 ---
 
 ### 8.9 Summary of this chapter

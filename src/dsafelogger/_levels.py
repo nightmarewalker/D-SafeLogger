@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import threading
+from typing import Any, Callable
 
 # ── Built-in immutable sets ──
 _BUILTIN_VALUES: frozenset[int] = frozenset({10, 20, 30, 40, 50})
@@ -189,8 +190,8 @@ def install_convenience_methods(logger_class: type) -> None:
         if hasattr(logger_class, method_name):
             continue
 
-        def _make_log_method(level_value: int):
-            def log_method(self, msg, *args, **kwargs):
+        def _make_log_method(level_value: int) -> Callable[..., None]:
+            def log_method(self: logging.Logger, msg: object, *args: Any, **kwargs: Any) -> None:
                 if self.isEnabledFor(level_value):
                     self._log(level_value, msg, args, **kwargs)
             return log_method

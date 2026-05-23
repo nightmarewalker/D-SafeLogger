@@ -118,6 +118,10 @@ uv run python scripts/generate_api_docs.py --check
 # Public design docs readiness check
 uv run python scripts/check_design_docs_sync.py
 
+# Release identity / documented facts checks (read-only; do not run tests)
+uv run python scripts/check_release_identity.py
+uv run python scripts/check_release_facts.py
+
 # Optional integration tests only
 uv run pytest tests -v -m optional_integration
 
@@ -180,7 +184,7 @@ Benchmark scratch/output rule:
 
 ## Documentation Rules
 
-- Keep `README.md`, `README_ja.md`, `TESTING.md`, `BENCHMARK.md`, `CHANGELOG.md`, and `docs/design/*v23j*` consistent when behavior, test policy, or benchmark interpretation changes.
+- Keep `README.md`, `README_ja.md`, `TESTING.md`, `BENCHMARK.md`, `CHANGELOG.md`, and the current public design documents under `docs/design/` consistent when behavior, test policy, or benchmark interpretation changes. Do not assume the design-document version suffix remains `v23j`; inspect the current filenames before updating references or checks.
 - Do not describe `dsafelogger.mp` as preview or experimental.
 - Do not claim D-SafeLogger is always the fastest backend. Single-process async has strong selected results; multiprocess raw throughput is not the primary value proposition.
 - Describe multiprocess value as Writer-owned sinks plus observable delivery state under abnormal conditions.
@@ -188,8 +192,30 @@ Benchmark scratch/output rule:
 - Regenerate `docs/api/` with `uv run python scripts/generate_api_docs.py` after public API/docstring changes, then verify with `--check`.
 - Treat `docs/design/` as the public design-document location. `plan/` is private and must not be linked from public docs.
 - Verify public design docs with `uv run python scripts/check_design_docs_sync.py`.
+- Verify release identity fields with `uv run python scripts/check_release_identity.py`. Use `--tag vX.Y.Z` when checking an intended release tag. Use `--review-version-mentions` for a non-failing report of older version strings in prose.
+- Verify documented current test/coverage facts with `uv run python scripts/check_release_facts.py`. This script is read-only and does not run tests; it checks that current baseline text is consistent across release documents. Use `--review-numeric-mentions` for a non-failing report of older validation numbers in prose/history sections.
 - Before release, rebuild distribution artifacts from a clean tree and verify wheel/sdist contents explicitly.
 - Do not change the package version until release readiness is explicitly confirmed.
+
+## Version Bump and Push Procedure
+
+Use this checklist when updating the package version and pushing a release branch/tag.
+
+- Confirm release readiness first; do not bump versions speculatively.
+- Inspect `git status --short`, `git diff`, and `git log --oneline -10` before editing. If unrelated user changes exist, leave them untouched.
+- Confirm the target version and update only the required version identity files: `pyproject.toml`, `src/dsafelogger/__init__.py`, `uv.lock`, `CHANGELOG.md`, and `AGENTS.md` current release status when appropriate.
+- Update public docs only when the release changes behavior, public API, test policy, benchmark interpretation, or user-facing release identity. Do not mechanically rewrite historical version numbers in changelog/history sections.
+- If public API, docstrings, or exported typing information changed, regenerate and check API docs with `uv run python scripts/generate_api_docs.py` and `uv run python scripts/generate_api_docs.py --check`.
+- If behavior, test policy, benchmark interpretation, or architecture changed, update the relevant current design documents under `docs/design/` and run `uv run python scripts/check_design_docs_sync.py`. Design document version suffixes may change, so discover the current document set instead of hardcoding `v23j`.
+- If benchmark claims or selected summaries changed, update benchmark summaries with `uv run python benchmarks/update_summary.py` and verify with `uv run python benchmarks/update_summary.py --check`. Do not regenerate manually edited `BENCHMARK.md` from benchmark runners.
+- Run read-only identity/facts checks before committing: `uv run python scripts/check_release_identity.py` and `uv run python scripts/check_release_facts.py`. These checks do not replace actual test execution; they prevent stale current-version, test-count, and coverage text from surviving after validation results have been recorded.
+- Run the release validation appropriate for the change: at minimum `uv run pytest tests -q`, `uv run mypy src`, `uv run pyright src`, `uv run pyright tests/typing_smoke`, `uv run python scripts/check_type_completeness.py --min-score 100`, `uv run python scripts/generate_api_docs.py --check`, `uv run python scripts/check_design_docs_sync.py`, `uv run python benchmarks/update_summary.py --check`, and `git diff --check`.
+- Before publishing, clean old distribution/scratch artifacts, build from a clean tree, validate wheel/sdist contents with `scripts/check_distribution_contents.py`, run `uvx twine check`, install the built wheel with `scripts/install_built_wheel.py`, and run packaged type completeness with `uv run --no-sync python scripts/check_type_completeness.py --min-score 100`.
+- Commit only intended files after reviewing the staged diff. Use a concise release-style commit message when the commit is an actual release version bump.
+- Create an annotated tag whose name exactly matches the package version, such as `v0.2.2`, and verify the tag points to the intended commit.
+- Push `main` first, wait for CI if appropriate, then push the tag so the publish workflow sees matching source and tag state.
+- For GitHub Releases, keep release notes focused on user-visible runtime/API/behavioral changes and important compatibility or operational notes. As a rule, do not include documentation-only changes, wording cleanups, internal planning updates, or routine generated-doc refreshes unless they materially affect users.
+- After push/publish, verify GitHub Actions, GitHub Release, PyPI version availability, local tags, and a clean working tree.
 
 ---
 
@@ -203,7 +229,7 @@ Benchmark scratch/output rule:
 
 ## 現在のリリース状態
 
-- 現在の公開対象バージョン: `0.2.1`
+- 現在の公開対象バージョン: `0.2.2`
 - 現在の import 名: `dsafelogger`
 - 最新の公開前レビュー結果（2026-05-07）: **GO-with-fixes**。v23j の follow-up fixes は local に反映済み。
 - 解消済み release blockers:
@@ -313,6 +339,10 @@ uv run python scripts/generate_api_docs.py --check
 # public design docs readiness check
 uv run python scripts/check_design_docs_sync.py
 
+# release identity / documented facts checks (read-only; tests は実行しない)
+uv run python scripts/check_release_identity.py
+uv run python scripts/check_release_facts.py
+
 # optional integration tests only
 uv run pytest tests -v -m optional_integration
 
@@ -375,7 +405,7 @@ benchmark scratch/output ルール:
 
 ## ドキュメント更新ルール
 
-- behavior、test policy、benchmark interpretation を変更した場合は、`README.md`, `README_ja.md`, `TESTING.md`, `BENCHMARK.md`, `CHANGELOG.md`, `docs/design/*v23j*` の整合を保ってください。
+- behavior、test policy、benchmark interpretation を変更した場合は、`README.md`, `README_ja.md`, `TESTING.md`, `BENCHMARK.md`, `CHANGELOG.md`, `docs/design/` 配下の現行公開設計書の整合を保ってください。設計書のバージョン suffix が常に `v23j` とは限らないため、参照やチェックを更新する前に現在のファイル名を確認してください。
 - `dsafelogger.mp` を preview / experimental と表現しないでください。
 - D-SafeLogger が常に最速だと主張しないでください。single-process async には強い selected results がありますが、multiprocess raw throughput は主な価値ではありません。
 - multiprocess の価値は、Writer-owned sinks と異常時 delivery state の観測可能性として説明してください。
@@ -383,5 +413,27 @@ benchmark scratch/output ルール:
 - public API / docstring を変更したら `uv run python scripts/generate_api_docs.py` で `docs/api/` を再生成し、`--check` で検証してください。
 - 公開設計書の置き場所は `docs/design/` です。`plan/` は非公開扱いで、公開文書から link しないでください。
 - 公開設計書は `uv run python scripts/check_design_docs_sync.py` で検証してください。
+- release identity fields は `uv run python scripts/check_release_identity.py` で検証してください。予定 tag を確認する場合は `--tag vX.Y.Z` を使ってください。文章中の旧 version 文字列は `--review-version-mentions` で non-failing report として確認できます。
+- current test/coverage facts の文書内整合は `uv run python scripts/check_release_facts.py` で検証してください。この script は read-only で tests を実行しません。文章・履歴 section 内の古い検証数値は `--review-numeric-mentions` で non-failing report として確認できます。
 - release 前には clean tree から配布物を再生成し、wheel/sdist の内容を明示的に確認してください。
 - release readiness が明示的に確定するまで package version を変更しないでください。
+
+## バージョン更新と push 手順
+
+package version を更新し、release branch/tag を push する場合は以下を使ってください。
+
+- 先に release readiness を確認してください。見込みだけで version bump しないでください。
+- 編集前に `git status --short`, `git diff`, `git log --oneline -10` を確認してください。無関係な user 変更がある場合は触らないでください。
+- 対象 version を確定し、必要な version identity file だけを更新してください: `pyproject.toml`, `src/dsafelogger/__init__.py`, `uv.lock`, `CHANGELOG.md`, 必要に応じて `AGENTS.md` の current release status。
+- 公開文書は、behavior、public API、test policy、benchmark interpretation、user-facing release identity が変わる場合だけ更新してください。changelog/history section に残る過去 version は機械置換しないでください。
+- public API、docstring、exported typing information が変わった場合は、`uv run python scripts/generate_api_docs.py` と `uv run python scripts/generate_api_docs.py --check` を実行してください。
+- behavior、test policy、benchmark interpretation、architecture が変わった場合は、`docs/design/` 配下の現行設計書を更新し、`uv run python scripts/check_design_docs_sync.py` を実行してください。設計書の version suffix は変わる可能性があるため、`v23j` 固定で扱わず、現在の設計書セットを確認してください。
+- benchmark claim や selected summary が変わった場合は、`uv run python benchmarks/update_summary.py` で summary を更新し、`uv run python benchmarks/update_summary.py --check` で検証してください。手動編集の `BENCHMARK.md` を benchmark runner から再生成しないでください。
+- commit 前に read-only identity/facts checks を実行してください: `uv run python scripts/check_release_identity.py` と `uv run python scripts/check_release_facts.py`。これらは実際の test execution を代替しません。validation results を文書へ記録した後に、current version、test count、coverage text の stale 表記が残ることを防ぐためのものです。
+- 変更内容に応じた release validation を実行してください。最低限、`uv run pytest tests -q`, `uv run mypy src`, `uv run pyright src`, `uv run pyright tests/typing_smoke`, `uv run python scripts/check_type_completeness.py --min-score 100`, `uv run python scripts/generate_api_docs.py --check`, `uv run python scripts/check_design_docs_sync.py`, `uv run python benchmarks/update_summary.py --check`, `git diff --check` を確認してください。
+- publish 前には古い distribution/scratch artifacts を整理し、clean tree から build し、`scripts/check_distribution_contents.py` で wheel/sdist contents を検証し、`uvx twine check` を実行してください。built wheel は `scripts/install_built_wheel.py` で install し、`uv run --no-sync python scripts/check_type_completeness.py --min-score 100` で packaged type completeness を検証してください。
+- staged diff を確認し、意図したファイルだけを commit してください。実際の release version bump なら release-style の簡潔な commit message を使ってください。
+- package version と完全に一致する annotated tag を作成してください。例: `v0.2.2`。tag が意図した commit を指すことも確認してください。
+- 先に `main` を push し、必要に応じて CI を待ってから tag を push してください。publish workflow が source と tag の整合した状態を見るようにします。
+- GitHub Release の release notes は、user-visible な runtime/API/behavior 変更と重要な互換性・運用上の注意に絞ってください。原則として、documentation-only change、文言整理、internal planning update、routine generated-doc refresh は、ユーザーに実質影響がない限り含めないでください。
+- push/publish 後は GitHub Actions、GitHub Release、PyPI version availability、local tag、clean working tree を確認してください。

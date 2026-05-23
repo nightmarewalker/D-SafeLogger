@@ -25,27 +25,10 @@ jobs:
         run: uv sync --group dev
 
       - name: Check release tag matches package version
-        run: |
-          uv run python - <<'PY'
-          import os
-          import sys
-          import tomllib
-          from pathlib import Path
+        run: uv run python scripts/check_release_identity.py
 
-          tag = os.environ.get('GITHUB_REF_NAME', '')
-          version = tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8'))['project']['version']
-          sys.path.insert(0, 'src')
-          import dsafelogger
-
-          expected = f'v{version}'
-          if tag != expected:
-              raise SystemExit(f'tag {tag!r} does not match {expected!r}')
-          if dsafelogger.__version__ != version:
-              raise SystemExit(
-                  f'__version__ {dsafelogger.__version__!r} does not match pyproject {version!r}'
-              )
-          print(f'release version verified: {version}')
-          PY
+      - name: Check documented release facts
+        run: uv run python scripts/check_release_facts.py
 
       - name: Check API docs
         run: uv run python scripts/generate_api_docs.py --check

@@ -8,7 +8,7 @@ This guide gives AI agents the current project context, quality gates, and bench
 
 ## Current Release Status
 
-- Current target release: `0.2.2`
+- Current target release: `0.3.0`
 - Current import name: `dsafelogger`
 - Latest pre-publish review status (2026-05-07): **GO-with-fixes**, with v23j follow-up fixes applied locally.
 - Resolved release blockers:
@@ -212,7 +212,7 @@ Use this checklist when updating the package version and pushing a release branc
 - Run the release validation appropriate for the change: at minimum `uv run pytest tests -q`, `uv run mypy src`, `uv run pyright src`, `uv run pyright tests/typing_smoke`, `uv run python scripts/check_type_completeness.py --min-score 100`, `uv run python scripts/generate_api_docs.py --check`, `uv run python scripts/check_design_docs_sync.py`, `uv run python benchmarks/update_summary.py --check`, and `git diff --check`.
 - Before publishing, clean old distribution/scratch artifacts, build from a clean tree, validate wheel/sdist contents with `scripts/check_distribution_contents.py`, run `uvx twine check`, install the built wheel with `scripts/install_built_wheel.py`, and run packaged type completeness with `uv run --no-sync python scripts/check_type_completeness.py --min-score 100`.
 - Commit only intended files after reviewing the staged diff. Use a concise release-style commit message when the commit is an actual release version bump.
-- Create an annotated tag whose name exactly matches the package version, such as `v0.2.2`, and verify the tag points to the intended commit.
+- Create an annotated tag whose name exactly matches the package version, such as `vX.Y.Z`, and verify the tag points to the intended commit.
 - Push `main` first, wait for CI if appropriate, then push the tag so the publish workflow sees matching source and tag state.
 - For GitHub Releases, keep release notes focused on user-visible runtime/API/behavioral changes and important compatibility or operational notes. As a rule, do not include documentation-only changes, wording cleanups, internal planning updates, or routine generated-doc refreshes unless they materially affect users.
 - After push/publish, verify GitHub Actions, GitHub Release, PyPI version availability, local tags, and a clean working tree.
@@ -229,7 +229,7 @@ Use this checklist when updating the package version and pushing a release branc
 
 ## 現在のリリース状態
 
-- 現在の公開対象バージョン: `0.2.2`
+- 現在の公開対象バージョン: `0.3.0`
 - 現在の import 名: `dsafelogger`
 - 最新の公開前レビュー結果（2026-05-07）: **GO-with-fixes**。v23j の follow-up fixes は local に反映済み。
 - 解消済み release blockers:
@@ -433,7 +433,7 @@ package version を更新し、release branch/tag を push する場合は以下
 - 変更内容に応じた release validation を実行してください。最低限、`uv run pytest tests -q`, `uv run mypy src`, `uv run pyright src`, `uv run pyright tests/typing_smoke`, `uv run python scripts/check_type_completeness.py --min-score 100`, `uv run python scripts/generate_api_docs.py --check`, `uv run python scripts/check_design_docs_sync.py`, `uv run python benchmarks/update_summary.py --check`, `git diff --check` を確認してください。
 - publish 前には古い distribution/scratch artifacts を整理し、clean tree から build し、`scripts/check_distribution_contents.py` で wheel/sdist contents を検証し、`uvx twine check` を実行してください。built wheel は `scripts/install_built_wheel.py` で install し、`uv run --no-sync python scripts/check_type_completeness.py --min-score 100` で packaged type completeness を検証してください。
 - staged diff を確認し、意図したファイルだけを commit してください。実際の release version bump なら release-style の簡潔な commit message を使ってください。
-- package version と完全に一致する annotated tag を作成してください。例: `v0.2.2`。tag が意図した commit を指すことも確認してください。
+- package version と完全に一致する annotated tag を作成してください。例: `vX.Y.Z`。tag が意図した commit を指すことも確認してください。
 - 先に `main` を push し、必要に応じて CI を待ってから tag を push してください。publish workflow が source と tag の整合した状態を見るようにします。
 - GitHub Release の release notes は、user-visible な runtime/API/behavior 変更と重要な互換性・運用上の注意に絞ってください。原則として、documentation-only change、文言整理、internal planning update、routine generated-doc refresh は、ユーザーに実質影響がない限り含めないでください。
 - push/publish 後は GitHub Actions、GitHub Release、PyPI version availability、local tag、clean working tree を確認してください。

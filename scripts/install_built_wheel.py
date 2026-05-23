@@ -9,6 +9,7 @@ the ``--force-reinstall``. Restore the editable state afterwards with
 """
 from __future__ import annotations
 
+import argparse
 import shutil
 import subprocess
 import sys
@@ -16,11 +17,15 @@ from pathlib import Path
 
 
 def main() -> int:
-    dist = Path("dist")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--dist-dir", default="dist", help="Directory containing exactly one built wheel.")
+    args = parser.parse_args()
+
+    dist = Path(args.dist_dir)
     wheels = sorted(dist.glob("*.whl"))
     if len(wheels) != 1:
         print(
-            f"expected exactly one wheel in dist/, found {len(wheels)}: {wheels}",
+            f"expected exactly one wheel in {dist}/, found {len(wheels)}: {wheels}",
             file=sys.stderr,
         )
         print(

@@ -9,7 +9,7 @@
 
 v23k は v23j の公開前品質ゲートを維持したまま、multiprocess observability の runtime warning、shutdown report、delivery status schema を追加する。
 
-現行 v23k のローカル検証 baseline は Python 3.14.3 / Windows 上の結果であり、`714 passed, 3 skipped`（`717` collected）である。fork E2E は POSIX-only、Windows spawn E2E は Windows-only であるため、OS によって skipped 数は変動し得る。0.2.2 向けの公開前品質ゲートでは、これに加えて `mypy src` / `pyright src` / `pyright tests/typing_smoke` / built wheel に対する `pyright --verifytypes dsafelogger --ignoreexternal` 100% completeness gate を実行する。
+現行 v23k のローカル検証 baseline は Python 3.14.3 / Windows 上の結果であり、`714 passed, 3 skipped`（`717` collected）である。fork E2E は POSIX-only、Windows spawn E2E は Windows-only であるため、OS によって skipped 数は変動し得る。0.2.2 で追加済みの公開前品質ゲートとして、これに加えて `mypy src` / `pyright src` / `pyright tests/typing_smoke` / built wheel に対する `pyright --verifytypes dsafelogger --ignoreexternal` 100% completeness gate を実行する。
 
 v23h から継続する動作変更は以下:
 
@@ -162,7 +162,7 @@ v23j では benchmark 公開成果物の管理方式を変更する。runner は
 
 ### v23j Publication Sync Addendum
 
-公開前同期の追加 DOD として、coverage 再生成、API docs `--check`、design docs sync check、GitHub CI / publish preflight、examples の formal MP / external rotation 追加を検証対象に含める。0.2.2 向けにはさらに source typing、typing smoke、built wheel に対する verifytypes 100% completeness gate を追加する。これらは runtime behavior を変更せず、公開成果物と品質ゲートを同期するための補助検証である。
+公開前同期の追加 DOD として、coverage 再生成、API docs `--check`、design docs sync check、GitHub CI / publish preflight、examples の formal MP / external rotation 追加を検証対象に含める。0.2.2 以降はさらに source typing、typing smoke、built wheel に対する verifytypes 100% completeness gate を追加する。これらは runtime behavior を変更せず、公開成果物と品質ゲートを同期するための補助検証である。
 
 ---
 

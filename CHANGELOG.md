@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-23
+
 ### Added
 - Multiprocess observability artifacts: `mp.GetDeliveryStatus()` / `DeliveryStatus`, `runtime_warning_path` JSON Lines output with per-pid worker fallback files, and `shutdown_report_path` JSON shutdown reports.
 - Tests for runtime warning output, shutdown report generation, public delivery-status snapshots, writer/worker accounting invariants, and runtime-vs-shutdown missing-detach semantics.

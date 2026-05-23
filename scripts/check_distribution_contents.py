@@ -8,6 +8,7 @@ Exit code 0 = OK, non-zero = error details printed to stderr.
 """
 from __future__ import annotations
 
+import argparse
 import sys
 import tarfile
 import zipfile
@@ -25,7 +26,11 @@ def _normalized_sdist_names(path: Path) -> set[str]:
 
 
 def main() -> int:
-    dist = Path("dist")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--dist-dir", default="dist", help="Directory containing one wheel and one sdist.")
+    args = parser.parse_args()
+
+    dist = Path(args.dist_dir)
     wheels = sorted(dist.glob("*.whl"))
     sdists = sorted(dist.glob("*.tar.gz"))
 

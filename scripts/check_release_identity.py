@@ -141,7 +141,8 @@ def check(expected_version: str | None, tag: str | None, review_mentions: bool) 
     for line_no, version in _agents_current_versions():
         _check_equal(findings, f"AGENTS.md:{line_no} current release", version, target)
 
-    effective_tag = tag if tag is not None else os.environ.get("GITHUB_REF_NAME")
+    github_ref_tag = os.environ.get("GITHUB_REF_NAME") if os.environ.get("GITHUB_REF_TYPE") == "tag" else None
+    effective_tag = tag if tag is not None else github_ref_tag
     if effective_tag:
         _check_equal(findings, "release tag", effective_tag, f"v{target}")
 

@@ -18,6 +18,32 @@ import dsafelogger.mp as mp
 from dsafelogger._mp_protocol import BootstrapContext
 
 
+def _make_bootstrap_context(tmp_path):
+    import multiprocessing
+    import uuid
+
+    ipc_mp_ctx = multiprocessing.get_context()
+    return BootstrapContext(
+        protocol_version=1,
+        session_id=uuid.uuid4().hex,
+        writer_pid=os.getpid(),
+        log_queue=ipc_mp_ctx.Queue(10),
+        control_queue=ipc_mp_ctx.Queue(10),
+        resolved_config={
+            'is_async': False,
+            'log_level': 'INFO',
+            'module_routes': [],
+        },
+        resolved_config_digest='abc',
+        registry_hash='hash',
+        log_queue_maxsize=10,
+        ipc_client_queue_maxsize=10,
+        writer_flush_batch=1,
+        ipc_log_timeout=0.01,
+        overflow_policy='drop',
+    )
+
+
 class TestAttachCurrentProcess:
 
     def test_same_ctx_reattach_is_noop(self, tmp_path, mp_state):
@@ -175,6 +201,72 @@ class TestGetLogger:
         assert mp_attach_mod._mp_runtime_state is None
         with pytest.raises(RuntimeError):
             mp.GetLogger('test')
+
+
+class TestDetachLocalDropSummary:
+
+    def test_build_local_drop_summary_includes_single_transport(self, tmp_path):
+        ctx = _make_bootstrap_context(tmp_path)
+        root_transport = mp_attach_mod.MPClientTransport(
+            ctx, ds_route='root', is_async=False
+        )
+        root_transport._attempted = 7
+        root_transport._drop_counter = 4
+        root_transport._overload_shed = 1
+        root_transport._transport_closed_drop = 1
+        root_transport._writer_unavailable_drop = 1
+        root_transport._timeout_drop = 1
+        state = mp_attach_mod.MPProcessState(
+            session_id=ctx.session_id,
+            ctx=ctx,
+            client_id='client',
+            process_pid=os.getpid(),
+            root_transport=root_transport,
+            module_transports={},
+        )
+
+        assert mp_attach_mod._build_local_drop_summary(state) == {
+            'attempted': 7,
+            'drop_counter': 4,
+            'overload_shed': 1,
+            'transport_closed_drop': 1,
+            'writer_unavailable_drop': 1,
+            'timeout_drop': 1,
+            'module_transport_count': 0,
+        }
+
+    def test_build_local_drop_summary_includes_module_transports(self, tmp_path):
+        ctx = _make_bootstrap_context(tmp_path)
+        root_transport = mp_attach_mod.MPClientTransport(
+            ctx, ds_route='root', is_async=False
+        )
+        module_transport = mp_attach_mod.MPClientTransport(
+            ctx, ds_route='module:myapp', is_async=False
+        )
+        root_transport._attempted = 2
+        root_transport._drop_counter = 1
+        root_transport._transport_closed_drop = 1
+        module_transport._attempted = 3
+        module_transport._drop_counter = 2
+        module_transport._overload_shed = 1
+        module_transport._timeout_drop = 1
+        state = mp_attach_mod.MPProcessState(
+            session_id=ctx.session_id,
+            ctx=ctx,
+            client_id='client',
+            process_pid=os.getpid(),
+            root_transport=root_transport,
+            module_transports={'myapp': module_transport},
+        )
+
+        summary = mp_attach_mod._build_local_drop_summary(state)
+
+        assert summary['attempted'] == 5
+        assert summary['drop_counter'] == 3
+        assert summary['overload_shed'] == 1
+        assert summary['transport_closed_drop'] == 1
+        assert summary['timeout_drop'] == 1
+        assert summary['module_transport_count'] == 1
 
 
 # ── v23c: queue maxsize configuration ────────────────────────────────────────

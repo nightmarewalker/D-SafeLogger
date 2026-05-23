@@ -794,6 +794,7 @@ class TestCauseSpecificCounters:
         assert runtime._writer_reconstruct_reject >= 1
         assert runtime._writer_close_marker_reject == 0
         assert runtime._reject_counter >= 1
+        assert runtime._accepted >= 1
 
     def test_status_includes_v23h_split_counters(self, tmp_path):
         """STATUS ACK exposes the v23h split: reconstruct_reject + close_marker_reject."""
@@ -817,6 +818,12 @@ class TestCauseSpecificCounters:
         assert 'writer_policy_reject' in ack['result']
         assert 'writer_partial_delivered' in ack['result']
         assert 'writer_best_effort_failures' in ack['result']
+        assert 'accepted' in ack['result']
+        assert 'delivered' in ack['result']
+        assert 'attempted' in ack['result']
+        assert 'writer_reject_breakdown' in ack['result']
+        assert 'worker_drop_breakdown' in ack['result']
+        assert 'writer_drop_breakdown' in ack['result']
 
     def test_writer_sink_reject_increments_on_handler_error(self, tmp_path):
         """Required-handler emit failures increment writer_sink_reject (v23h: per record)."""
@@ -835,6 +842,7 @@ class TestCauseSpecificCounters:
 
         assert runtime._writer_sink_reject == 1
         assert runtime._reject_counter == 1
+        assert runtime._delivered == 0
 
     def test_writer_policy_reject_increments_on_handler_filter(self, tmp_path):
         """Required-handler filter rejection increments writer_policy_reject (v23h: per record)."""
@@ -878,6 +886,38 @@ class TestCauseSpecificCounters:
         assert runtime._writer_policy_reject == 1
         assert runtime._reject_counter == 1
 
+    def test_mixed_sink_and_policy_failure_counts_one_reject_record(self, tmp_path):
+        """A single rejected record must not double-count sink and policy failures."""
+        class FailingHandler(logging.Handler):
+            _ds_required = True
+
+            def emit(self, record):
+                raise RuntimeError('handler failed intentionally')
+
+        class FilteringHandler(logging.Handler):
+            _ds_required = True
+
+            def emit(self, record):
+                raise AssertionError('emit should not be called')
+
+        filtering = FilteringHandler()
+        filtering.addFilter(lambda _record: False)
+        ctx = _make_ctx(tmp_path)
+        runtime = WriterRuntime(
+            ctx, {'root': [FailingHandler(), filtering, FailingHandler()]}
+        )
+        record = logging.makeLogRecord({'msg': 'x', 'levelno': logging.INFO})
+        record._ds_route = 'root'  # type: ignore[attr-defined]
+
+        runtime._dispatch(record)
+        result = runtime._cmd_status('status', 'client')['result']
+
+        assert runtime._reject_counter == 1
+        assert sum(result['writer_reject_breakdown'].values()) == 1
+        assert result['known_rejected'] == 1
+        assert runtime._writer_sink_reject == 1
+        assert runtime._writer_policy_reject == 0
+
     def test_writer_partial_delivered_increments_on_mixed_required_result(self, tmp_path):
         """Partial delivery within the required sink set is counted (v23h)."""
         class RecordingHandler(logging.Handler):
@@ -901,8 +941,53 @@ class TestCauseSpecificCounters:
 
         # v23h: partial is its own terminal state — sink_reject NOT also incremented.
         assert runtime._writer_partial_delivered == 1
+        assert runtime._delivered == 0
         assert runtime._writer_sink_reject == 0
         assert runtime._reject_counter == 0
+
+    def test_writer_delivered_counts_only_full_required_delivery(self, tmp_path):
+        """Full required-sink delivery increments delivered exactly once."""
+        calls: list[logging.LogRecord] = []
+
+        class RecordingHandler(logging.Handler):
+            _ds_required = True
+
+            def emit(self, record):
+                calls.append(record)
+
+        ctx = _make_ctx(tmp_path)
+        runtime = WriterRuntime(
+            ctx, {'root': [RecordingHandler(), RecordingHandler()]}
+        )
+        record = logging.makeLogRecord({'msg': 'x', 'levelno': logging.INFO})
+        record._ds_route = 'root'  # type: ignore[attr-defined]
+
+        runtime._dispatch(record)
+
+        assert len(calls) == 2
+        assert runtime._delivered == 1
+        assert runtime._writer_partial_delivered == 0
+        assert runtime._reject_counter == 0
+
+    def test_no_required_sinks_counts_as_delivered_for_accounting(self, tmp_path):
+        """Routes with best-effort-only sinks must not create unexplained loss."""
+        class BestEffortHandler(logging.Handler):
+            _ds_required = False
+
+            def emit(self, record):
+                pass
+
+        ctx = _make_ctx(tmp_path)
+        runtime = WriterRuntime(ctx, {'root': [BestEffortHandler()]})
+        runtime._accepted = 1
+        record = logging.makeLogRecord({'msg': 'x', 'levelno': logging.INFO})
+        record._ds_route = 'root'  # type: ignore[attr-defined]
+
+        runtime._dispatch(record)
+        result = runtime._cmd_status('status', 'client')['result']
+
+        assert runtime._delivered == 1
+        assert result['unexplained_lost'] == 0
 
     def test_best_effort_failure_does_not_count_as_reject(self, tmp_path, capsys):
         """v23h H2: best-effort sink (e.g. console) failure is visible but not counted."""
@@ -994,7 +1079,12 @@ class TestCauseSpecificCounters:
         transport = MPClientTransport(ctx, ds_route='root', is_async=True)
         # Replace local queue with a full one (maxsize=1, already put one item)
         transport._local_queue = _queue.Queue(maxsize=1)
-        transport._local_queue.put(object())  # fill it
+        transport._local_queue.put(
+            _serialize_record(
+                logging.makeLogRecord({'msg': 'fill', 'levelno': logging.INFO}),
+                'root',
+            )
+        )
 
         record = logging.makeLogRecord({'msg': 'overflow', 'levelno': logging.INFO})
         transport._emit_record(record)
@@ -1004,6 +1094,19 @@ class TestCauseSpecificCounters:
         assert transport._transport_closed_drop == 0
         assert transport._writer_unavailable_drop == 0
         assert transport._timeout_drop == 0
+        assert transport._attempted == 1
+
+    def test_transport_attempted_counts_successful_send(self, tmp_path):
+        """attempted increments at _emit_record entry, including successful sends."""
+        ctx = _make_ctx(tmp_path, is_async=False)
+        transport = MPClientTransport(ctx, ds_route='root', is_async=False)
+
+        record = logging.makeLogRecord({'msg': 'sent', 'levelno': logging.INFO})
+        transport._emit_record(record)
+
+        assert transport._attempted == 1
+        assert transport._drop_counter == 0
+        assert ctx.log_queue.get(timeout=1.0)['msg'] == 'sent'
 
     def test_transport_cause_counters_transport_closed(self, tmp_path):
         """Transport closed → transport_closed_drop increments (v23c)."""
@@ -1178,7 +1281,7 @@ class TestBatchFlush:
             for route, handlers in runtime._sink_groups.items():
                 for h in handlers:
                     if hasattr(h, '_stream_flush_on_emit'):
-                        assert h._stream_flush_on_emit is False, (
+                        assert getattr(h, '_stream_flush_on_emit') is False, (
                             f'File handler for route {route!r} should have '
                             f'stream_flush_on_emit=False'
                         )
@@ -1351,6 +1454,157 @@ class TestV23GCounters:
         captured = capsys.readouterr()
         assert '[D-SafeLogger] Writer sink flush error' in captured.err
         _stop_runtime(runtime)
+
+
+class TestPhase2DeliveryAccounting:
+
+    def test_detach_aggregates_multiple_worker_summaries(self, tmp_path):
+        ctx = _make_ctx(tmp_path)
+        runtime = WriterRuntime(ctx, {'root': [logging.NullHandler()]})
+
+        runtime._cmd_detach(
+            'req-1',
+            'client-1',
+            {
+                'local_drop_summary': {
+                    'attempted': 10,
+                    'drop_counter': 4,
+                    'overload_shed': 1,
+                    'transport_closed_drop': 1,
+                    'writer_unavailable_drop': 1,
+                    'timeout_drop': 1,
+                },
+            },
+        )
+        runtime._cmd_detach(
+            'req-2',
+            'client-2',
+            {
+                'local_drop_summary': {
+                    'attempted': 5,
+                    'drop_counter': 2,
+                    'overload_shed': 0,
+                    'transport_closed_drop': 1,
+                    'writer_unavailable_drop': 0,
+                    'timeout_drop': 1,
+                },
+            },
+        )
+
+        assert runtime._aggregate_worker_attempted == 15
+        assert runtime._aggregate_worker_drop_counter == 6
+        assert runtime._aggregate_worker_overload_shed == 1
+        assert runtime._aggregate_worker_transport_closed_drop == 2
+        assert runtime._aggregate_worker_writer_unavailable_drop == 1
+        assert runtime._aggregate_worker_timeout_drop == 2
+
+    def test_detach_missing_local_drop_summary_is_zero(self, tmp_path):
+        ctx = _make_ctx(tmp_path)
+        runtime = WriterRuntime(ctx, {'root': [logging.NullHandler()]})
+
+        ack = runtime._cmd_detach('req-1', 'client-1', {})
+
+        assert ack['success'] is True
+        assert runtime._aggregate_worker_attempted == 0
+        assert runtime._aggregate_worker_drop_counter == 0
+
+    def test_status_includes_worker_and_writer_drop_breakdowns(self, tmp_path):
+        ctx = _make_ctx(tmp_path)
+        runtime = WriterRuntime(ctx, {'root': [logging.NullHandler()]})
+        runtime._aggregate_worker_overload_shed = 1
+        runtime._aggregate_worker_transport_closed_drop = 2
+        runtime._aggregate_worker_writer_unavailable_drop = 3
+        runtime._aggregate_worker_timeout_drop = 4
+        runtime._aggregate_worker_drop_counter = 10
+        runtime._aggregate_worker_attempted = 20
+        runtime._writer_drain_deadline_loss = 5
+
+        ack = runtime._cmd_status('status', 'client')
+        result = ack['result']
+
+        assert result['attempted'] == 20
+        assert result['known_dropped'] == 15
+        assert result['worker_drop_breakdown'] == {
+            'worker_overload_shed': 1,
+            'worker_transport_closed_drop': 2,
+            'worker_writer_unavailable_drop': 3,
+            'worker_timeout_drop': 4,
+        }
+        assert result['writer_drop_breakdown'] == {
+            'writer_drain_deadline_loss': 5,
+        }
+        assert 'writer_drain_deadline_loss' not in result['worker_drop_breakdown']
+
+    def test_runtime_status_active_clients_are_not_missing_detach_clients(self, tmp_path):
+        ctx = _make_ctx(tmp_path)
+        runtime = WriterRuntime(ctx, {'root': [logging.NullHandler()]})
+        with runtime._active_lock:
+            runtime._active_clients['active-worker'] = {
+                'pid': 12345,
+                'session_id': ctx.session_id,
+            }
+
+        result = runtime._cmd_status('status', 'client')['result']
+
+        assert result['active_clients'] == 1
+        assert result['missing_detach_clients'] == 0
+        assert result['snapshot_complete'] is False
+
+    def test_attach_records_client_pid_for_later_missing_detach_reporting(self, tmp_path):
+        ctx = _make_ctx(tmp_path)
+        runtime = WriterRuntime(ctx, {'root': [logging.NullHandler()]})
+
+        ack = runtime._cmd_attach(
+            'attach',
+            'client-with-pid',
+            {
+                'session_id': ctx.session_id,
+                'protocol_version': ctx.protocol_version,
+                'registry_hash': ctx.registry_hash,
+                'pid': 54321,
+            },
+        )
+
+        assert ack['success'] is True
+        with runtime._active_lock:
+            assert runtime._active_clients['client-with-pid']['pid'] == 54321
+
+    def test_status_accounting_invariant_for_controlled_writer_states(self, tmp_path):
+        ctx = _make_ctx(tmp_path)
+        runtime = WriterRuntime(ctx, {'root': [logging.NullHandler()]})
+        runtime._accepted = 4
+        runtime._delivered = 1
+        runtime._writer_partial_delivered = 1
+        runtime._writer_sink_reject = 1
+        runtime._writer_drain_deadline_loss = 1
+
+        result = runtime._cmd_status('status', 'client')['result']
+
+        assert result['unexplained_lost'] == 0
+        assert result['accepted'] == (
+            result['delivered']
+            + result['partial_delivered']
+            + result['known_rejected']
+            + sum(result['writer_drop_breakdown'].values())
+            + result['unexplained_lost']
+        )
+
+    def test_attempted_side_invariant_complete_snapshot(self, tmp_path):
+        ctx = _make_ctx(tmp_path)
+        runtime = WriterRuntime(ctx, {'root': [logging.NullHandler()]})
+        runtime._accepted = 8
+        runtime._aggregate_worker_attempted = 12
+        runtime._aggregate_worker_overload_shed = 1
+        runtime._aggregate_worker_transport_closed_drop = 1
+        runtime._aggregate_worker_writer_unavailable_drop = 1
+        runtime._aggregate_worker_timeout_drop = 1
+
+        result = runtime._cmd_status('status', 'client')['result']
+
+        assert result['snapshot_complete'] is True
+        assert result['attempted'] == (
+            result['accepted'] + sum(result['worker_drop_breakdown'].values())
+        )
 
 
 # ── UT-MP-V23H: v23h validation, TrackedQueue, sink classification ─────────

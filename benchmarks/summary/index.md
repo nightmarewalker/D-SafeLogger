@@ -10,4 +10,4 @@ This directory is generated from `benchmarks/summary/manifest.json`.
 | `single_process` | `benchmark_20260506_180018` | `single_process` | [`benchmarks/summary/single_process.md`](single_process.md) |
 | `multiprocess_integrity` | `benchmarks_multi_integ_20260506_185947` | `integrity_profile` | [`benchmarks/summary/multiprocess_integrity.md`](multiprocess_integrity.md) |
 | `multiprocess_performance` | `benchmarks_multi_perf_20260506_190518` | `performance_profile` | [`benchmarks/summary/multiprocess_performance.md`](multiprocess_performance.md) |
-| `multiprocess_resilience` | `benchmarks_multi_resilience_20260506_211129` | `resilience_profile` | [`benchmarks/summary/multiprocess_resilience.md`](multiprocess_resilience.md) |
+| `multiprocess_resilience` | `benchmarks_multi_resilience_20260523_084326` | `resilience_profile` | [`benchmarks/summary/multiprocess_resilience.md`](multiprocess_resilience.md) |

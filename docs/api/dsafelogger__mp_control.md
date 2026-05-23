@@ -6,11 +6,11 @@ Control plane helpers for D-SafeLogger multiprocess.
 
 ## Functions
 
-### `_make_attach_request(client_id: 'str', send_conn: 'Any', session_id: 'str', *, protocol_version: 'int', registry_hash: 'str') -> 'ControlRequest'`
+### `_make_attach_request(client_id: 'str', send_conn: 'Any', session_id: 'str', *, protocol_version: 'int', registry_hash: 'str', pid: 'int | None' = None) -> 'ControlRequest'`
 
 ### `_make_bootstrap_ready_request(client_id: 'str', send_conn: 'Any') -> 'ControlRequest'`
 
-### `_make_detach_request(client_id: 'str', send_conn: 'Any', *, close_marker_failed: 'bool' = False) -> 'ControlRequest'`
+### `_make_detach_request(client_id: 'str', send_conn: 'Any', *, close_marker_failed: 'bool' = False, local_drop_summary: 'dict[str, int] | None' = None) -> 'ControlRequest'`
 
 ### `_make_pipe() -> 'tuple[Any, Any]'`
 
@@ -30,6 +30,8 @@ Args:
     send_conn: The send end of a multiprocessing.Pipe(duplex=False) pair.
                Connection objects are picklable and can be placed inside
                a ControlRequest dict that travels through a Queue.
+
+### `_make_status_request(client_id: 'str', send_conn: 'Any') -> 'ControlRequest'`
 
 ### `_make_stop_request(client_id: 'str', send_conn: 'Any') -> 'ControlRequest'`
 

@@ -3,7 +3,7 @@ SPDX-License-Identifier: Apache-2.0
 SPDX-FileCopyrightText: 2026 D-SafeLogger contributors
 -->
 
-# D-SafeLogger v23j Architecture Analysis White Paper
+# D-SafeLogger v23k Architecture Analysis White Paper
 
 > An objective articulation and evaluation of the specification, design philosophy, performance, and ecosystem position of a logging platform compatible with Python's standard-library `logging` module.
 
@@ -14,7 +14,7 @@ SPDX-FileCopyrightText: 2026 D-SafeLogger contributors
 |---|---|
 | Document version | 1.0 |
 | Publication date | 2026-05-09 |
-| Target library | **D-SafeLogger v23j** |
+| Target library | **D-SafeLogger v23k** |
 | pyproject version | `0.2.1` |
 | import name | `dsafelogger` |
 | distribution name | `d-safelogger` |
@@ -27,7 +27,7 @@ SPDX-FileCopyrightText: 2026 D-SafeLogger contributors
 
 ## Executive Summary
 
-This white paper covers the current architecture of **D-SafeLogger v23j**, a logging platform built on Python's standard-library `logging` module. It organizes and evaluates the library's specification, design philosophy, feature set, performance, and ecosystem position.
+This white paper covers the current architecture of **D-SafeLogger v23k**, a logging platform built on Python's standard-library `logging` module. It organizes and evaluates the library's specification, design philosophy, feature set, performance, and ecosystem position.
 
 ### Product Positioning
 
@@ -69,7 +69,7 @@ This positions D-SafeLogger as a clearly differentiated option for specific oper
 
 This white paper is written within the following scope:
 
-1. **Target architecture**: The scope is the current architecture as of v23j. Improvement proposals, issue management, and future roadmap items are out of scope; this document is not a substitute for an issue tracker or roadmap.
+1. **Target architecture**: The scope is the current architecture as of v23k. Improvement proposals, issue management, and future roadmap items are out of scope; this document is not a substitute for an issue tracker or roadmap.
 2. **Competitive information**: Facts confirmed from public primary sources are prioritized. Unverified items are not asserted.
 3. **OSS-release positioning**: This document does not predict adoption, popularity, or market response. It is limited to design positioning that can be confirmed from public materials.
 4. **Reference policy**: Public design documents under `docs/design/` are used as primary design sources. Private planning materials are excluded from references.
@@ -204,8 +204,8 @@ Notations and abbreviations used in this white paper:
 | Notation | Meaning |
 |---|---|
 | `§N.M` | Section reference within this white paper (for example, §2.8 covers multiprocess support) |
-| Design document §N | `docs/design/D_SafeLogger_Specification_v23j_full.md` chapter |
-| Detailed design document §N | Chapter `docs/design/D-SafeLogger_DetailedDesign_v23j.md` |
+| Design document §N | `docs/design/D_SafeLogger_Specification_v23k_full.md` chapter |
+| Detailed design document §N | Chapter `docs/design/D-SafeLogger_DetailedDesign_v23k.md` |
 | ◎ | primary strength / center of design |
 | ○ | supported out of the box |
 | △ | officially supported through configuration or adapters, with limited scope |
@@ -228,7 +228,7 @@ D-SafeLogger is a logging platform built on the Python standard library `logging
 #### 1.1.2 Positioning
 Official design document §1 defines the position of this module as follows.
 > This module is a lightweight, fast, and highly functional logging platform that is commonly used by all projects in the various Python ecosystems (D-Settings, DPySide, D-MessageRouter, etc.) provided by `D`. **The premise is that it will be released as a standalone OSS, but the top priority will be to operate it as a common platform for the "D Ecosystem" rather than to widely disseminate it**.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §1)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §1)
 This means that library design decisions prioritize ``robustness and operational consistency as a foundation within the D ecosystem'' over ``widespread popularity.'' Its positioning is different from general-purpose front-end libraries (Loguru / structlog, etc.) in that the priority order of design decisions is made clear from the time of publication.
 In addition, the design document lists the following as absolute conditions for this library.
 - **Maintaining the standard logging calling model** is an absolute condition.
@@ -290,7 +290,7 @@ Structurally eliminate runtime dependencies. **Limit development/bench dependenc
 ---
 
 ### 1.3 Architectural advantages
-Official design document §2 lists 19 advantages of the entire v23j architecture. The observable facts can be classified as follows.
+Official design document §2 lists 19 advantages of the entire v23k architecture. The observable facts can be classified as follows.
 #### 1.3.1 “Independent” structure
 | Item | Design specification |
 |---|---|
@@ -408,7 +408,7 @@ This is a way of placing the restriction that ``extension points are provided, b
 ---
 
 ### 1.6 Positioning based on primary sources
-From the materials reviewed in this chapter, the design goals as of v23j can be summarized as follows.
+From the materials reviewed in this chapter, the design goals as of v23k can be summarized as follows.
 1. **It is positioned as an "extension of stdlib `logging`" and not a "redesign"**: For a configuration in which drop-in extension, preservation of existing call sites, and co-participation of a third-party logging library are all compatible at the same time, only D-SafeLogger and stdlib `logging` are compatible in the README Feature Comparison table.
 2. **Zero dependence is defined as an ``absolute condition'' rather than a ``feature''**: §1 of the design document specifies ``achieved with zero external dependencies'' as an absolute condition, and §2 embodies the Vendor-Agnostic principle by excluding vendor imports such as OTel from the core module. This is not a judgment for individual functions, but is used as a consistency constraint for the entire library.
 3. **``Safe'' is not a single concept but is developed as a six-axis operational dimension**: The Overview section of the README clearly identifies six axes: startup safety / file safety / record・context safety / operational control / concurrency・multiprocess safety / failure observability, and each axis corresponds to the subsequent individual function design.
@@ -419,19 +419,19 @@ From the materials reviewed in this chapter, the design goals as of v23j can be 
 ---
 
 ### 1.7 Summary of this chapter
-The design philosophy of D-SafeLogger v23j can be summarized into three points:
+The design philosophy of D-SafeLogger v23k can be summarized into three points:
 1. **"Extend, don't replace"**: Strengthen safety below the file output boundary while maintaining stdlib `logging`'s API, call sites, and third-party integration.
 2. **"Zero dependencies. There is a sanctuary."**: External runtime dependencies and vendor-specific imports are excluded from the core, and settings that cause accidents such as `diagnose` are structurally isolated.
 3. **"Do not make failure impossible. Make it explainable."**: Externalize delivery failures, shutdown errors, and initialization inconsistencies through counters/exceptions/shutdown summaries instead of letting them deteriorate silently.
 These ideas will be implemented as a concrete architecture (3-layer configuration pipeline, Capture/Transport/Sink, Append-Only routing, `dsafelogger.mp` Writer) in the next chapter, ``2. Specifications and Design.''
 ---
 
-> **Main references for this chapter**: `docs/design/D_SafeLogger_Specification_v23j_full.md` §1, §2 / `README.md` Overview, "Why D-SafeLogger?", Feature Comparison, Compatibility/Non-goals section / `README_ja.md` Same section / `LICENSE` / `pyproject.toml`
-> This document is intended to explain and evaluate the current v23j architecture, and does not include improvement proposals, issue management, or future roadmaps.
+> **Main references for this chapter**: `docs/design/D_SafeLogger_Specification_v23k_full.md` §1, §2 / `README.md` Overview, "Why D-SafeLogger?", Feature Comparison, Compatibility/Non-goals section / `README_ja.md` Same section / `LICENSE` / `pyproject.toml`
+> This document is intended to explain and evaluate the current v23k architecture, and does not include improvement proposals, issue management, or future roadmaps.
 ## Chapter 2 Specifications and Design
 ### 2.1 Overall architecture
 #### 2.1.1 Physical module configuration
-The module configuration of v23j defined in detailed design document §1 is as follows (package name `dsafelogger`).
+The module configuration of v23k defined in detailed design document §1 is as follows (package name `dsafelogger`).
 ```text
 dsafelogger/
   __init__.py # single-process public API (ConfigureLogger, GetLogger, register_level, ReopenLogFiles)
@@ -473,7 +473,7 @@ According to the specifications in §11.3 and §2 of the design document, the in
 | **Sink / Runtime** | `FileSink` / `ConsoleSink` / routing / hash / manifest / reopen | Consolidated in Writer runtime: routing / file open/close / hash / manifest / archive / purge / reopen / shutdown / control plane |
 Design document §11.3 specifies the following boundary provisions:
 > Even in the multiprocess version, `logging` compatibility is the responsibility of the Capture layer, and the Writer must not re-execute the Capture semantics of `LogRecord` (logger hierarchy evaluation, `propagate` judgment, level judgment, `f_locals` collection). The Writer side simply receives `LogEvent` and dispatches it to the sink group according to the route.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §11.3)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §11.3)
 This is a clear statement of the design attitude that ``the only difference between single-process and multiprocess is the Transport boundary, and the Capture/Sink responsibility boundary remains unchanged.''
 #### 2.1.3 v23 Writer invariants
 Design document §12.1 has 9 fixed invariant conditions that will not be broken in the v23 series.
@@ -647,7 +647,7 @@ Default format string:
 #### 2.4.4 Non-destructive handling of LogRecord
 Design document §9.7 and detailed design document §4 are specified as mandatory implementation patterns.
 > The same instance of `logging.LogRecord` is shared among all handlers. If Formatter or Handler directly rewrites attributes such as `record.levelname` or `record.msg`, destructive side effects will propagate to subsequent handlers.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §9.7)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §9.7)
 The implementation pattern is resolved by "display proxy".
 ```python
 class DisplayRecordProxy:
@@ -905,7 +905,7 @@ Design principles (§11.9):
 | `ipc_log_timeout` | 0.5 seconds | `ValueError` in `<=0`, warning + clip in `>3.0` | `{prefix}_IPC_LOG_TIMEOUT` |
 | `MAX_IPC_LOG_TIMEOUT_SECONDS` | 3.0 (internal limit) | Absolute line of defense for the framework | — |
 > Design decision: `MAX_IPC_LOG_TIMEOUT_SECONDS = 3.0` is an absolute upper limit that does not cause the normal log producer path to be blocked for too long. The queue is taken as an upper limit long enough to wait for natural recovery from temporary saturation, but not so long as to irreversibly harden the GUI thread or request handler thread.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §11.16.1)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §11.16.1)
 v23h revised: **`ValueError`** (fail-fast from warning + ignore) if environment variable value cannot be interpreted as int / float.
 #### 2.8.10 Overflow policy (§11.16.2)
 - **Drop record** when `ipc_log_timeout` exceeds or `queue.Full`.
@@ -1016,14 +1016,14 @@ In the multiprocess route, the Configure layer sets `stream_flush_on_emit` of th
 - Serialization responsibility for reopen is on the Writer side
 - ACK timeout: internal constant `CONTROL_PLANE_ACK_TIMEOUT_SEC = 5.0` (do not add timeout argument to public API signature)
 > Design judgment: The basis for 5.0 seconds is a value that takes into account the typical postrotate script execution time in logrotate/cron operation (within a few seconds) and the margin for the reopen processing time on the Writer side (usually several tens of ms).
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §11.20.3)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §11.20.3)
 #### 2.8.20 mp_context (§11.12)
 `mp_context` is `multiprocessing` context that should be shared by Writer runtime and worker processes.
 - Reception type: `None` / `'spawn'` / `'fork'` / `'forkserver'` / `multiprocessing.context.BaseContext`
 - Default resolution: `mp_context=None` → **Leave to Python default context** (The library does not perform its own fallback based on OS determination)
 - When `mp_context` is specified, **consistently applied to all IPC primitive generation for log/control queue and Pipe reply path**
 > Note: Python default multiprocessing context is OS and Python version dependent. If you port `mp_context=None` as is, the attach behavior and initialization requirements may change depending on the start method.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §11.12)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §11.12)
 ---
 
 ### 2.9 Overload Policy and Survival-first Policy
@@ -1049,7 +1049,7 @@ A policy that prioritizes the survival of the main process rather than retaining
 | Confusing overflow with `unexpected_loss` | Design bug and misjudging overload policy |
 The design document shall specify:
 > When adding strict lossless mode, unbounded queue, or a mode that allows OOM risk, be sure to ask the user's judgment as it relates to the safety policy of D-SafeLogger.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §12.4)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §12.4)
 ---
 
 ### 2.10 Concurrency safety and free-threaded support
@@ -1109,7 +1109,7 @@ The materials reviewed in this chapter can be summarized as follows.
 ---
 
 ### 2.13 Summary of this chapter
-The specifications and design of D-SafeLogger v23j can be summarized into the following five points:
+The specifications and design of D-SafeLogger v23k can be summarized into the following five points:
 1. **Operate the three-layer structure (Capture / Transport / Sink) as an invariant condition**: Responsibility boundaries do not change in either single-process or multiprocess, and in multiprocess, the Transport boundary only goes through IPC.
 2. **3-layer configuration pipeline (environment variables > INI/dict > arguments) + Fail-Fast + Sanctuary**: The configuration override route is uniquely determined, and specific settings (diagnose / sens_kws / fmt instance) block the route.
 3. **Layer the delivery status using 5 + 6 + 1 terms and treat only `unexpected_loss` as a bug**: The remaining 6 types of terminal states are all derived from policy and are classified as "explainable facts" and are reflected in counter / warning / summary.
@@ -1118,8 +1118,8 @@ The specifications and design of D-SafeLogger v23j can be summarized into the fo
 These specification facts are revisited in the next chapter, “3. Usability,” from the perspective of public APIs, INI/dict configuration, environment variables, and examples, and again in Chapter 5, “Detailed Analysis by Function,” as the behavior of individual features.
 ---
 
-> **Main reference materials for this chapter**: `docs/design/D_SafeLogger_Specification_v23j_full.md` §3, §4, §5, §6, §7, §9, §10, §11, §12 / `docs/design/D-SafeLogger_DetailedDesign_v23j.md` §1, §2, §4, §5, §6, §7, §8, §11, §15a / `docs/api/dsafelogger*.md` / `src/dsafelogger/` Module configuration / `pyproject.toml`
-> This document is intended to explain and evaluate the current v23j architecture, and does not include improvement proposals, issue management, or future roadmaps.
+> **Main reference materials for this chapter**: `docs/design/D_SafeLogger_Specification_v23k_full.md` §3, §4, §5, §6, §7, §9, §10, §11, §12 / `docs/design/D-SafeLogger_DetailedDesign_v23k.md` §1, §2, §4, §5, §6, §7, §8, §11, §15a / `docs/api/dsafelogger*.md` / `src/dsafelogger/` Module configuration / `pyproject.toml`
+> This document is intended to explain and evaluate the current v23k architecture, and does not include improvement proposals, issue management, or future roadmaps.
 ## Chapter 3 Usability
 ### 3.1 Public API surface
 #### 3.1.1 Entrance is 2 functions
@@ -1400,10 +1400,10 @@ Design document §8 and `examples/14_cli_operations.md`:
 #### 3.6.2 Significance of `tail -f` that “automatically detects and follows the latest file”
 Design document §8 Beginning:
 > Append-Only routing has the advantage of avoiding fatal file locks, but has the disadvantage that ``Since the file name of the writing destination changes dynamically, it is not possible to always write the same `app.log` to `tail -f`.'' To overcome this, a set of dedicated CLI utilities is included in the package.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §8)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §8)
 The role of the CLI is to compensate for the operational weaknesses of the Append-Only model, and it is provided as part of the library itself.
 > Transparent file tracking: Even if the source application changes files due to log ``day crossing'' during output, the CLI dynamically detects this and transparently replaces the `tail` destination with the new file and continues outputting.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §8.1)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §8.1)
 #### 3.6.3 Designing `init` assuming redirection
 Design document §8.1: The design intention for `init` to output to standard output without taking a file path argument is as follows.
 - Avoid complications such as checking to overwrite existing files
@@ -1529,7 +1529,7 @@ From `README.md`, public design documents, and operational guides, this project'
 |---|---|---|
 | Entrance | `README.md` / `README_ja.md` | overview + feature comparison + tutorial pointer |
 | Learning | `examples/01_*.md`~`examples/17_*.md` (17 files) | tutorial / scenario guide |
-| Design | `docs/design/*v23j*.md` (3 files) | Basic design, detailed design, test design |
+| Design | `docs/design/*v23k*.md` (3 files) | Basic design, detailed design, test design |
 | API | `docs/api/dsafelogger*.md` | Automatically generated API reference |
 | Operation | `TESTING.md` / `BENCHMARK.md` / `CONTRIBUTING.md` / `CHANGELOG.md` | Verification/Performance/Contribution/History |
 #### 3.10.2 Automatic generation of docs/api/
@@ -1563,7 +1563,7 @@ INI parser implementation policy defined by design document §5.6:
 > Instead of using external libraries (D-Settings, etc.), include a dedicated minimal INI loader using the standard library `configparser.ConfigParser(interpolation=None)` inside D-SafeLogger.
 >
 > Design rationale: A clear trade-off in favor of "full portability (zero external dependencies)" as the underlying library over the DRY principle (code deduplication). The logger is the foundation at the bottom of all projects, and other D ecosystem libraries (such as D-Settings) may depend on D-SafeLogger. To avoid circular dependencies, the logger itself must not depend on anything external.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §5.6)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §5.6)
 From a usability perspective, it is recorded as an observed fact that both ``INI settings can be used'' and ``zero external dependencies'' hold true at the same time.
 ---
 
@@ -1599,7 +1599,7 @@ The materials reviewed in this chapter can be summarized as follows.
 ---
 
 ### 3.14 Summary of this chapter
-The usability goals of D-SafeLogger v23j can be summarized in the following five points:
+The usability goals of D-SafeLogger v23k can be summarized in the following five points:
 1. **Entrance is consolidated into 2 functions (`ConfigureLogger` / `GetLogger`), and auxiliary API is optional**: Start with a minimum of 3 lines, and scale up to audit and compliance by adding 26 arguments step by step.
 2. **3-tier pipeline (environment variables > INI/dict > arguments) supports change agents (developers/DevOps/operators)**: `env_prefix` separates namespaces and structures runtime overrides without redeployment.
 3. **stdlib `logging` migration is call site unchanged, setup reduced by 50–60%**: 3 patterns of `basicConfig` / `TimedRotatingFileHandler` / `dictConfig` are materialized in before/after. Third-party libraries such as SQLAlchemy / Django can participate without modification.
@@ -1608,8 +1608,8 @@ The usability goals of D-SafeLogger v23j can be summarized in the following five
 These points are revisited in the next chapter, “4. Security,” as safety aspects such as zero-dep supply chain posture, the `diagnose` sanctuary, sens_kws masking, and SHA-256 integrity, and again in Chapter 5, “Detailed Analysis by Function,” as individual feature behavior.
 ---
 
-> **Main references for this chapter**: `docs/design/D_SafeLogger_Specification_v23j_full.md` §4, §5, §8, §10, §11.4, §11.11, §11.12 / `examples/01_quick_start.md`, `02_configuration_guide.md`, `03_migration_from_stdlib.md`, `04_stdlib_ecosystem_coexistence.md`, `05_windows_service_and_scheduled_batch.md`, `06_web_api_logging.md`, `07_long_running_service.md`, `08_compliance_audit.md`, `09_debugging_production.md`, `10_incident_response_bundle.md`, `11_async_performance.md`, `12_multiprocess_logging.md`, `13_external_rotation_reopen.md`, `14_cli_operations.md`, `15_opentelemetry_logging.md`, `16_structlog_coexistence.md`, `17_container_collector_coexistence.md` / `README.md` / `README_ja.md`
-> This document is intended to explain and evaluate the current v23j architecture, and does not include improvement proposals, issue management, or future roadmaps.
+> **Main references for this chapter**: `docs/design/D_SafeLogger_Specification_v23k_full.md` §4, §5, §8, §10, §11.4, §11.11, §11.12 / `examples/01_quick_start.md`, `02_configuration_guide.md`, `03_migration_from_stdlib.md`, `04_stdlib_ecosystem_coexistence.md`, `05_windows_service_and_scheduled_batch.md`, `06_web_api_logging.md`, `07_long_running_service.md`, `08_compliance_audit.md`, `09_debugging_production.md`, `10_incident_response_bundle.md`, `11_async_performance.md`, `12_multiprocess_logging.md`, `13_external_rotation_reopen.md`, `14_cli_operations.md`, `15_opentelemetry_logging.md`, `16_structlog_coexistence.md`, `17_container_collector_coexistence.md` / `README.md` / `README_ja.md`
+> This document is intended to explain and evaluate the current v23k architecture, and does not include improvement proposals, issue management, or future roadmaps.
 ## Chapter 4 Security
 > **Definition of "security" in this chapter**: Security dealt with in this chapter is not limited to encryption, authentication, and access control. Treated as operational safety, including supply chain, misconfiguration, exposure of confidential information, auditability, failure prevention during parallel execution, and suppression of availability degradation through logging mechanisms. This library itself is not an access control system or cryptographic infrastructure (README "Compatibility / Non-goals" section).
 >
@@ -1631,10 +1631,10 @@ In this chapter, we will sequentially discuss (1) supply chain, (2) startup secu
 #### 4.2.1 Zero runtime dependencies
 `pyproject.toml` and design document §1 / §2:
 > Zero Dependency: Consists only of standard libraries. Structurally eliminate external dependence and reduce supply chain risk to zero.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §2)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §2)
 In §1 of the design document, this condition is specified as an "absolute condition."
 > While making "complete compliance with the standard library" an absolute requirement, it achieves diagnostic capabilities that surpass third-party libraries (such as Loguru) and robustness that avoids fatal file locking problems in Windows environments with **zero external dependencies**.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §1)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §1)
 This allows us to observe:
 - Do not pull dependent packages during installation (complete with `pip install d-safelogger`)
 - A structure that prevents this library from being attacked when a vulnerability in a dependent package is discovered.
@@ -1642,7 +1642,7 @@ This allows us to observe:
 #### 4.2.2 Vendor-Agnostic Principles (v20)
 Design document §2:
 > Do not include any vendor-specific imports (such as OpenTelemetry) or data references in the core module (under `src/dsafelogger/`). Vendor integration such as OTel is provided as custom Formatter insertion using `file_fmt` / `console_fmt`, context injection using `contextualize()`, and sample code under `examples/`.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §2)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §2)
 significance:
 - Since imports of opentelemetry-api / opentelemetry-sdk / other vendor SDKs do not exist in the core code, there is no path for these vulnerabilities to propagate to this library.
 - Vendor integrations are separated as examples (sample code that users can optionally include) and are not included in the trust boundary of the library itself.
@@ -1665,7 +1665,7 @@ significance:
 #### 4.3.1 Design attitude
 Design documents §9.1 and §2:
 > Fail-Fast initialization verification & pre-storage verification: Immediately tests whether the output destination directory can be created and permissions at startup (when running `ConfigureLogger`), and detects permission errors and disk fullness at an early stage. Even if the value in the INI file is invalid, an exception will be thrown immediately without silent fallback.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §2)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §2)
 **A design approach that structurally eliminates the situation where the settings appear to move even though they are not reflected.**
 #### 4.3.2 Items verified at startup
 | Verification items | Behavior in the event of failure | Specification basis |
@@ -1689,7 +1689,7 @@ Design documents §9.1 and §2:
 #### 4.3.3 Principle of not allowing silent fallback
 Design document §5.3:
 > For type conversion of string values ​​read from the INI file (`is_async` to bool, `max_bytes` to int, etc.) or format violations, immediately throw an exception and stop startup (Fail-Fast) instead of easily falling back to the default value. Silent fallback to default values ​​creates the most dangerous failure pattern: ``settings appear to be working even though they are not reflected.''
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §5.3)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §5.3)
 This is a design decision that ensures that configuration errors will surface at startup, and eliminates "hidden configuration inconsistencies" that are only discovered during the operational phase after deployment.
 #### 4.3.4 fail-fast enhancements in v23h
 v23h revision of design document §11.16.1 / §11.27:
@@ -1714,7 +1714,7 @@ Design document §4.4 clearly states the reason for this design decision as foll
 > INI files are often included in version control (git), and the risk of `diagnose = true` being committed and entering the production environment is the same as arguments in the code. Therefore, the route from the INI file is also blocked.
 >
 > If it is necessary to enable it in the production environment, do it explicitly as an infrastructure layer operation by setting environment variables.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §4.4)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §4.4)
 `examples/09_debugging_production.md` describes the pattern as “The Sanctuary Pattern”:
 > Diagnostic mode is deliberately hard to enable. This is by design — it's a safety mechanism:
 > - A developer can't accidentally enable it in code — there is no Python parameter for it.
@@ -1726,7 +1726,7 @@ Design document §4.4 clearly states the reason for this design decision as foll
 #### 4.4.2 `"1"` is the only valid value
 Design document §4.4: Only `"1"` is valid as the environment variable value. `"true"` / `"yes"` / `"True"` etc. are treated as invalid values.
 > By limiting it to only `"1"`, it prevents unintended activation due to differences in truth value notation depending on the operating environment.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §4.4)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §4.4)
 This decision was made to eliminate the risk of increasing omissions and contamination by allowing multiple truth value expressions.
 #### 4.4.3 Sensitive keyword masking with sens_kws
 Design document §9.4:
@@ -1758,7 +1758,7 @@ Design documents §9.4 and §10.1:
 | `sens_kws=['ssn'], sens_kws_replace=True` (replacement) | Discard the built-in 12 words and match only the specified word |
 `sens_kws` / `sens_kws_replace` Both **Settings from environment variables are intentionally not supported** (§3.4 / §4 / §5.3). The design document explains this as "sanctuary treatment similar to `diagnose`" (§3.4 notes).
 > v20 Clarification: `sens_kws` / `sens_kws_replace` intentionally does not support settings from environment variables. This is treated as a "sanctuary" similar to `diagnose`, and is a design decision to prevent unintended changes to sensitive keywords.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §3.4)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §3.4)
 #### 4.4.6 Areas where masking is not applied
 `examples/09_debugging_production.md` Section "What Is NOT Masked":
 - Message body directly passed to `logger.info(...)` / `logger.error(...)` etc.
@@ -1775,7 +1775,7 @@ This functions as an indirect defense against ``attacker-induced `__repr__` exce
 #### 4.4.8 cross-thread safety
 Design document §9.4:
 > In a free-threaded build, a `f_locals` live reference to frame of another running thread is unsafe. Therefore, when a hand-off across queues occurs, the traceback and `f_locals` are converted to a **safe masked, repr-converted snapshot** on the producer thread side, and no live reference is made on the consumer thread side.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §9.4)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §9.4)
 Although this is a matter of correctness rather than security, it also helps reduce the risk of data leakage by eliminating accidents in which the internal state of other threads is unintentionally referenced in a free-threaded environment.
 ---
 
@@ -1806,7 +1806,7 @@ Design document §7.6.3 specifies three operational values:
 > - **File loss detection**: Files that are listed in the manifest but do not exist on the disk can be determined to have been "deleted." Sidecar files alone cannot detect when files and sidecars are deleted together.
 > - **Improved tampering resistance**: By storing the manifest in a separate directory and with different permissions from the log itself, even if the log file is manipulated by an attacker, it can be detected by the inconsistency with the manifest.
 > - **Overview of history**: You can instantly check whether all the logs for the past N days are complete by checking the number of lines in one manifest file.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §7.6.3)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §7.6.3)
 #### 4.5.4 Threat model (clarification of warranty scope)
 `examples/08_compliance_audit.md` Section "Threat Model and Limitations":
 > The sidecar + manifest flow proves that a **completed** log file still matches the recorded SHA-256 digest. It does **not** make local logs tamper-proof by itself.
@@ -1821,7 +1821,7 @@ This is a typical example of the attitude of actively clarifying the ``scope of 
 #### 4.5.5 Atomicity of sidecar writes
 Design document §7.6.4:
 > Atomic nature of sidecar writing: `.sha256` In order to prevent the sidecar from showing the partially written state to the outside, we recommend writing to a temporary file and then atomically replacing it with the main file using `os.replace()`.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §7.6.4)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §7.6.4)
 This prevents the verification tool from ``referring to a sidecar that was written midway and causing verification to fail''.
 #### 4.5.6 Fail-fast in cyclic mode
 Design document §7.6.5:
@@ -1853,7 +1853,7 @@ Design document §11.16:
 These four internal constants are a structural guarantee that ``even if the user sets arbitrarily large values, the length will not exceed the length at which the host process is irreversibly hardened on the library side.''
 Design document §11.16.1 Line of Defense:
 > Design decision: `MAX_IPC_LOG_TIMEOUT_SECONDS = 3.0` is an absolute upper limit to prevent the normal log producer path from being blocked for too long. We use 3.0 seconds as an upper bound that is long enough to wait for the queue to recover naturally from temporary saturation, but not so long that it irreversibly freezes the GUI thread or request handler thread.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §11.16.1)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §11.16.1)
 #### 4.6.3 Prohibition of unbounded queue / permanent block
 Design document §12.4:
 | Prohibitions | Reasons |
@@ -1879,24 +1879,24 @@ This is a mechanism to detect ``incorrect attaching to different Writer sessions
 #### 4.6.6 Control plane error normalization
 Design document §11.9:
 > Pipe send/recv failure is not leaked as raw `BrokenPipeError` / `EOFError`, but is normalized to `RuntimeError` system as a control plane failure.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §11.9)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §11.9)
 This prevents accidents where exceptions originating from the internal implementation (such as `BrokenPipeError`) leak outside the API boundary and the user code writes an exception handler that depends on the internal implementation. By fixing the exception type to the contract, compatibility is maintained when changing the internal implementation.
 #### 4.6.7 Prohibiting `mp.ConfigureLogger()` for the second time in the same process
 Design document §10.5 / §11.23:
 > The second `dsafelogger.mp.ConfigureLogger()` in the same process is `RuntimeError`
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §10.5)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §10.5)
 This structurally eliminates the accident of ``two Writer runtimes / two types of `ctx` coexisting in the same process.''
 #### 4.6.8 Child-only client identity after fork inheritance
 Design document §11.13.3 / §11.21.1:
 > In POSIX `fork`, the attach state of the parent process can be inherited. v22i treats this as a normal case. However, since `fork` only copies the main thread, the process-local pump thread etc. used in `is_async=True` must be regenerated on the child process side.
 >
 > A child must not reuse its parent's client identity. After confirming that it is the same Writer session, establish a process-local client identity exclusively for child, register it in the Writer active client registry, and then restart logging.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §11.13.3)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §11.13.3)
 This is a rule to prevent accidents in which ``child continues to use the parent's identity after forking, causing the consistency of the active client registry on the Writer side to collapse.''
 #### 4.6.9 Prohibition of resurrection after Writer session ends
 Design document §11.13.3:
 > Boundary condition: The above fork inheritance child re-registration only holds true while the original Writer session is still alive. If the parent/Writer side has accepted `STOP`, is draining, or has terminated, the child process must not **automatically revive** the same session. In this case, the subsequent `emit()` will be handled through the normal Writer unavailable route (drop + stderr warning), and continued operation is not guaranteed.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §11.13.3)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §11.13.3)
 This is a convention that prevents an unexpected resurrection in which the child is silently restarted after the Writer exits.
 ---
 
@@ -1904,7 +1904,7 @@ This is a convention that prevents an unexpected resurrection in which the child
 #### 4.7.1 Prohibiting silent drop / silent hang / silent fallback
 Design document §12.1 (Writer invariants):
 > fail-safe: avoid silent loss, silent hang, silent fallback
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §12.1)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §12.1)
 This is used as a Writer invariant throughout the v23 series. The principle of no silent failure applies throughout the library.
 #### 4.7.2 Delivery status classification
 The six terminal states specified in Design Document §12.3 (restated and detailed in §2.8.14):
@@ -1925,7 +1925,7 @@ Rate limiting reduces the risk that stderr itself becomes a source of log pollut
 #### 4.7.4 Writer exit code
 Design document §11.22.4:
 > Normal termination is exit code 0. Abnormal termination is non-zero. Parent/caller process issues stderr warning if Writer exit code is non-zero.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §11.22.4)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §11.22.4)
 This makes it possible for the monitoring system (such as systemd) to detect abnormal termination of Writer.
 #### 4.7.5 Bounded shutdown contract (v23h)
 Design document §12.4.1:
@@ -1938,7 +1938,7 @@ From a security perspective, this corresponds to ``the logging mechanism does no
 #### 4.7.6 Registry timeout during worker crash
 Design document §11.21.2:
 > If the worker process terminates without sending `DETACH`, there may be some residue in the Writer's active client registry. An internal timeout is provided to wait for the number of active clients to be 0 during shutdown. When the timeout is reached, a stderr warning is issued and the process transitions to a forced stop. Avoid silent hangs.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §11.21.2)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §11.21.2)
 This is a rule to abort an incident where "shutdown cannot proceed forever due to a worker crash" with a timeout. Convert silent hang to forced stop + warning.
 ---
 
@@ -1946,17 +1946,17 @@ This is a rule to abort an incident where "shutdown cannot proceed forever due t
 #### 4.8.1 Sanitizing `pg_name`
 Design document §7.1:
 > Sanitization rules for `pg_name`: `pg_name` has characters prohibited in OS file names (`/`, `\`, `:`, `*`, `?`, `"`, `<`, `>`, `|`), replace them with `_`. This is not a Fail-Fast feature, but a specification for generating safe file names while avoiding startup inhibition as a log base.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §7.1)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §7.1)
 As a result, path traversal via `pg_name` and OS-specific special file name injection do not occur structurally.
 #### 4.8.2 Stricter file name filtering
 Design document §7.5:
 > When identifying the target file, perform strict filtering to only target file name prefixes that exactly match `pg_name` in order to prevent false matches due to prefix matches of `pg_name` (e.g., a problem where the pattern of `pg_name='App'` also matches `AppServer_*.log`).
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §7.5)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §7.5)
 This is a rule that eliminates accidents where ``generation management accidentally deletes files of other apps when logs of other apps exist in the same directory.''
 #### 4.8.3 Self-healability and lock contention
 Design document §7.5 / §2:
 > Fire-and-Forget Asynchronous purge and self-healing: Generation management (deleting and archiving old files) is performed using a separate disposable thread only when switching output destinations. Even if purge fails due to Windows file lock, etc., it will automatically repair itself (retry) at the next switching timing.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §2)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §2)
 From a security perspective, this means that this library does not forcibly take the lock or forcefully delete the log file while another process (monitoring tool, etc.) has the log file open.
 #### 4.8.4 Log file name is a "fixed name selected by the application"
 Design document §7.1: The output file name is based on `{log_path}/{pg_name}` and is given a fixed pattern suffix depending on the routing mode. **There is no path for user input (such as request parameters) to be injected directly into the file name**.
@@ -1972,7 +1972,7 @@ Design document §9.8:
 > Do not use global level name override with `logging.addLevelName()`.
 >
 > Design Rationale: `addLevelName()` changes the process-global state of the `logging` module, thus affecting all loggers (including 3rd party libraries) within the same process. The abbreviation conversion of D-SafeLogger should be completed within the responsibility of the own Formatter, and by avoiding global side effects, maintain test independence and coexistence with third-party libraries.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §9.8)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §9.8)
 From a security perspective, the side effect of ``the existence of a library itself changing the behavior of other libraries within the same process'' can be suppressed.
 #### 4.9.2 Non-destructive handling of `LogRecord`
 Design document §9.7 (reprinted, detailed in §2.4.4):
@@ -1981,7 +1981,7 @@ From a security perspective, this prevents accidents in which "a subsequent hand
 #### 4.9.3 Starting an empty Context in internal thread
 Design document §9.5:
 > The internal thread that D-SafeLogger itself creates always starts with an empty `Context`. This prevents context from leaking to internal threads.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §9.5)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §9.5)
 This is a rule to eliminate accidents in which ``the user's request context (user_id, etc.) is leaked to the internal thread of this library, and subsequent logs are mixed with context that the user did not intend.''
 ---
 
@@ -2024,7 +2024,7 @@ The materials reviewed in this chapter can be summarized as follows.
 ---
 
 ### 4.12 Summary of this chapter
-The security goals of D-SafeLogger v23j can be summarized into the following five points:
+The security goals of D-SafeLogger v23k can be summarized into the following five points:
 1. **Structurally eliminates supply chain paths**: Zero runtime external dependencies + Vendor-Agnostic core means there are no vulnerability propagation paths via third-party dependencies. Apache 2.0 license also ensures legal predictability.
 2. **Structurally prohibit "accidental mixing into production"**: `diagnose` is enabled only with the environment variable `"1"`, `sens_kws` is also blocked as a sanctuary, and invalid INI types are Fail-Fast. It is impossible for ``write it in the code and forget to put it back'' or ``a misconfiguration will work silently.''
 3. **Actively clarify the scope of warranty and non-warranty in the document**: Outside the HMAC scope, the meaning of `UnexplainedLost`, what the Writer does not guarantee, and What Not To Claim are previously declared in `examples/` and `BENCHMARK.md`.
@@ -2033,11 +2033,11 @@ The security goals of D-SafeLogger v23j can be summarized into the following fiv
 These points are revisited in the next chapter, “5. Detailed Analysis by Function,” as the behavior of individual features such as Append-Only routing, async transport, multiprocess delivery states, and SHA-256, and again in Chapter 7, “Positioning at OSS Release,” as technical value for the audit/compliance and supply-chain-focused segments.
 ---
 
-> **Main references for this chapter**: `docs/design/D_SafeLogger_Specification_v23j_full.md` §1, §2, §4.4, §6, §7.1, §7.5, §7.6, §9.1, §9.4, §9.5, §9.7, §9.8, §10.1, §10.5, §11.1, §11.6, §11.7, §11.9, §11.13, §11.16, §11.21, §11.22, §11.23, §12.1, §12.3, §12.4, §12.4.1 / `README.md` Overview, Main Features section / `examples/08_compliance_audit.md` / `examples/09_debugging_production.md` / `examples/12_multiprocess_logging.md` / `examples/13_external_rotation_reopen.md` / `LICENSE` / `pyproject.toml` / `MANIFEST.in`
-> This document is intended to explain and evaluate the current v23j architecture, and does not include improvement proposals, issue management, or future roadmaps.
+> **Main references for this chapter**: `docs/design/D_SafeLogger_Specification_v23k_full.md` §1, §2, §4.4, §6, §7.1, §7.5, §7.6, §9.1, §9.4, §9.5, §9.7, §9.8, §10.1, §10.5, §11.1, §11.6, §11.7, §11.9, §11.13, §11.16, §11.21, §11.22, §11.23, §12.1, §12.3, §12.4, §12.4.1 / `README.md` Overview, Main Features section / `examples/08_compliance_audit.md` / `examples/09_debugging_production.md` / `examples/12_multiprocess_logging.md` / `examples/13_external_rotation_reopen.md` / `LICENSE` / `pyproject.toml` / `MANIFEST.in`
+> This document is intended to explain and evaluate the current v23k architecture, and does not include improvement proposals, issue management, or future roadmaps.
 ## Chapter 5 Detailed Analysis by Function
 ### 5.0 Chapter structure
-This chapter covers the major features of v23j **individually** and organizes each feature's (a) design purpose, (b) operational specifications, and (c) technical characteristics. The functions mentioned across multiple contexts in the previous chapters will also be verbalized again from the perspective of "functional units."
+This chapter covers the major features of v23k **individually** and organizes each feature's (a) design purpose, (b) operational specifications, and (c) technical characteristics. The functions mentioned across multiple contexts in the previous chapters will also be verbalized again from the perspective of "functional units."
 | Section | Feature Group |
 |---|---|
 | 5.1 | Append-Only Routing Function Group (9 Modes) |
@@ -2071,7 +2071,7 @@ Design document §7.2:
 > **Historical background**: The renaming method became popular due to its simplicity, ``the current log is always `app.log`'', but it has a fatal flaw in that it locks the file **In a Windows environment, renaming results in a Permission Error even if another monitoring tool etc. has the file open, causing the entire backend service to go down**.
 >
 > **Technical advantage**: D-SafeLogger uses **Append-Only (does not perform any renaming, just switches the stream to a file that has been given a date or sequential number from the beginning)** as its architecture, and completely eliminates this locking problem in O(1). Similar ideas can be found in specific options such as Logback and Log4j2, but no design with this as the default core exists in the Python ecosystem.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §7.2)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §7.2)
 #### 5.1.2 Nine routing modes
 Suffix rules established by detailed design document §5.2:
 | `routing_mode` | Suffix format | Example | Switching trigger | Generation management target |
@@ -2153,7 +2153,7 @@ Detailed design document §7 / ​​§15.5:
 #### 5.2.4 Serialization of the same family
 Design document §7.5:
 > Maintenance serialization of the same family: purge/archive belonging to the same `directory + pg_name` will not be executed in parallel. To avoid duplicate deletion, duplicate ZIPing, and frequent conflict warnings, maintenance of the same family is serialized in key units.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §7.5)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §7.5)
 This is a rule to eliminate conflicts in ``settings where multiple routing modes share the same `pg_name` prefix.''
 #### 5.2.5 Stricter file name filtering
 Design document §7.5: To prevent false matches due to prefix matches of `pg_name` (e.g., the pattern `'App'` also matches `AppServer_*.log`), target files must only **exactly match** one of the following:
@@ -2182,7 +2182,7 @@ When coexisting with an external rotator such as `logrotate` on Linux/Unix, this
 #### 5.3.2 Constraints
 Design document §7.3.1:
 > `daily` / `hourly` / `min_interval` / `startup_interval` / `size` / `count` / cyclic etc. D-SafeLogger Routing, in which file switching is done by itself, and external rotation operation should not be mixed. `ReopenLogFiles()` sends `ValueError` if any of the writer-side file sinks is `routing_mode != 'none'`.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §7.3.1)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §7.3.1)
 #### 5.3.3 Difference between single / multiprocess
 Design document §10.4 / §11.20:
 | Version | Behavior |
@@ -2191,7 +2191,7 @@ Design document §10.4 / §11.20:
 | multiprocess | Control request to control plane → Wait for ACK (`CONTROL_PLANE_ACK_TIMEOUT_SEC = 5.0` seconds) |
 Design decisions for the multiprocess version of ACK timeout (§11.20.3):
 > The basis for 5.0 seconds is a value that takes into account the typical postrotate script execution time (within a few seconds) in logrotate/cron operations and the margin for the reopen processing time on the Writer side (usually several tens of ms).
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §11.20.3)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §11.20.3)
 #### 5.3.4 Boundary conditions on network, virtual, and volatile filesystems
 On a local POSIX filesystem, an external rename can succeed while the writer continues appending through the old descriptor. The problem can therefore stay hidden for some time. On NFS, SMB/CIFS, FUSE mounts, cloud-synced folders, container bind mounts, and other network or virtual filesystems, the failure modes around external rename/unlink of an active log file can become more visible and more implementation-dependent.
 
@@ -2365,7 +2365,7 @@ Design document §10.5 provisions:
 > The multiprocess version of `fmt` / `file_fmt` / `console_fmt` allows the same type faces as the single-process version, but only instances of **`logging.Formatter` body and D-SafeLogger built-in Formatter body** are allowed to freeze/reconstruct at the process boundary.
 >
 > Custom formatter instances (including custom subclass) other than the above allow-list are set to `TypeError`, and only the picklable spec consisting of `kind + constructor args` is passed on the Writer side.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §10.5)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §10.5)
 #### 5.5.6 Functional Observation
 - Structured logs and custom formats are exclusive (avoiding semantic conflicts due to implementing the same function through different routes).
 - File output (JSON for observability tools) and console output (human-readable text) can use different formats through per-sink Formatter configuration.
@@ -2386,7 +2386,7 @@ Design document §9.5:
 #### 5.6.3 Fail-Fast Rejection of Mutable Values
 Design document §2:
 > Pass only immutable values ​​(str, int, float, tuple, etc.) to kwargs of `contextualize()`**. If the value of kwargs passed to contextualize() is a typical mutable object such as list, dict, set, etc., a TypeError or ValueError is raised (Fail-Fast). This ensures that unintended side effects due to O(1) reference passing are detected during development.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §2)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §2)
 Note: `MappingProxyType` only protects top-level key operations, and cannot prevent content changes if the value is mutable (list, dict, etc.). This is specified in the specifications.
 #### 5.6.4 Hand-off rules for sync mode and async mode
 Design document §9.5:
@@ -2407,7 +2407,7 @@ Design document §11.8.2:
 > `_ds_context` and `_ds_extra` always exist as keys, and empty is represented as `{}`.
 >
 > Supplement: This standing convention is necessary to maintain the hasattr-based context snapshot fallback established in v21 at IPC boundaries. Since the distinction based on hasattr does not hold on the Writer side that receives `LogEvent` via pickle, the existence of the key clearly indicates that "the snapshot has been acquired on the Capture side" to ensure that no live context reference occurs on the Writer side.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §11.8.2)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §11.8.2)
 #### 5.6.8 Functional Observation
 - When exiting the scope of `contextualize()`, state rewinding using Token is performed (standard ContextVar rewinding pattern).
 - `examples/06_web_api_logging.md` presents a typical pattern of attaching request_id / user_id etc. with `contextualize()`.
@@ -2556,7 +2556,7 @@ In particular, stop the listener before worker join. This is because the listene
 #### 5.9.5 Positioning of daemon=True
 Design document §9.3:
 > Since the daemon thread can stop abruptly during shutdown, it should not be used as a basis for safety during normal termination. `daemon=True` remains as a backstop at the time of abnormal termination.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §9.3)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §9.3)
 #### 5.9.6 Separating timeout
 Design document §9.3:
 Shutdown separates queue drain timeout and worker join timeout. If `join()` cannot be continued due to late finalization, it will be degraded to warning and termination will be given priority.
@@ -2627,7 +2627,7 @@ Design document §11.5 / §11.6:
 #### 5.11.2 Writer runtime is internally implemented
 Design document §11.5:
 > Writer runtime is an implementation element inside the logger, and is not something that developers can explicitly start directly using `multiprocessing.Process` / `subprocess.Popen`, etc. The contracts that developers should be aware of are limited to `ctx`, `AttachCurrentProcess()`, and `DetachCurrentProcess()`.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §11.5)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §11.5)
 #### 5.11.3 protocol payload (detailed design document §15a.5.1)
 ```python
 @dataclass(frozen=True)
@@ -2749,7 +2749,7 @@ per-record accounting rules:
 #### 5.13.3 Conditions for establishing partial_delivered
 Design document §12.3:
 > partial_delivered and single handler route: `partial_delivered` is a terminal state that indicates a "mixed success and failure" state within the required sink set. When there is one required sink set (a typical `root` route or module route with a single file configuration), the concept of partial does not hold, so the counter always remains 0. Partial is observed only in configurations where the user has registered multiple required handlers for the same route.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §12.3)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §12.3)
 #### 5.13.4 6 breakdown of writer_reject (v23h)
 Design document §12.3:
 | Classification | Definition |
@@ -2847,7 +2847,7 @@ Design document §11.16.1:
 The implementation of log plane queue uses `TrackedQueue`, which is derived from `multiprocessing.queues.Queue`.
 #### 5.15.2 Implementing native qsize fallback
 > Automatically fallback to the `multiprocessing.Value` counter only when `super().qsize()` is **exception probed** and `NotImplementedError` is caught in the constructor. Since the determination does not depend on the OS name (such as macOS), it will work correctly even on future or minor unsupported platforms without additional support.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §11.16.1)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §11.16.1)
 #### 5.15.3 Functional observation
 - On platforms where `Queue.qsize()` returns `NotImplementedError`, such as macOS, seamlessly switches to providing qsize by `Value` counter.
 - Since the determination is based on behavior probes rather than branching based on OS name, portability to future platforms is high.
@@ -2873,7 +2873,7 @@ The implementation of log plane queue uses `TrackedQueue`, which is derived from
 #### 5.16.2 Static reflection principle
 Design document §4 Beginning:
 > The environment variables in this chapter are not dynamically reflected during process operation. For the changes to take effect, the target process must be restarted, or there must be an initialization path where `ConfigureLogger` is re-executed.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §4)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §4)
 #### 5.16.3 Special terms for each environment variable
 | Environment variables | Special terms |
 |---|---|
@@ -2915,7 +2915,7 @@ Design document §5.3:
 #### 5.17.5 String coercion for `config_dict`
 Design document §5.7.1:
 > All values ​​are string types: All values ​​in the dictionary are specified as strings so that they go through the exact same type conversion/validation pipeline as when reading from an INI file. Passing `int` or `bool` directly will result in `TypeError` (Fail-Fast).
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §5.7.1)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §5.7.1)
 As a result, the code path for type conversion and validation is completely unified regardless of whether you use INI or dict.
 #### 5.17.6 Exclusion constraints
 Design document §5.7.3:
@@ -2963,7 +2963,7 @@ A design that allows users to freely control the save destination using shell re
 #### 5.18.4 Tail transparent file switching
 Design document §8.1:
 > Transparent file tracking: Even if the source application changes files due to log ``day crossing'' during output, the CLI dynamically detects this and transparently replaces the `tail` destination with the new file and continues outputting.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §8.1)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §8.1)
 This is a design decision to compensate for the operational weakness of the Append-Only model (`tail -f app.log` does not hold) on the CLI side.
 #### 5.18.5 Functional Observation
 - The CLI is included in the main unit and is not distributed as a separate package.
@@ -2979,11 +2979,11 @@ Design document §1 / §2:
 #### 5.19.2 Explicit locking of shared state
 Design document §2 / §9.2:
 > The shared states of `_configure_state`, `_active_pipeline`, `_active_workers`, `_custom_levels`, etc. are protected by explicit locking without assuming the existence of GIL. Does not depend on implementation-dependent atomicity of `list` / `dict`.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §2)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §2)
 #### 5.19.3 cross-thread safety
 Design document §9.4:
 > In a free-threaded build, a `f_locals` live reference to frame of another running thread is unsafe. Therefore, when a hand-off across queues occurs, the traceback and `f_locals` are converted to a **safe masked, repr-converted snapshot** on the producer thread side, and no live reference is made on the consumer thread side.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §9.4)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §9.4)
 #### 5.19.4 thread boundary semantics
 Design document §9.5:
 - Initial context inheritance to new user-generated threads follows Python specifications
@@ -3043,7 +3043,7 @@ Design document §9.4:
 #### 5.21.3 Incompatibility from environment variables
 Design document §3.4:
 > `sens_kws` / `sens_kws_replace` intentionally does not support settings from environment variables. This is treated as a "sanctuary" similar to `diagnose`, and is a design decision to prevent unintended changes to sensitive keywords.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §3.4)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §3.4)
 #### 5.21.4 Masking Scope (Reposted, §4.4.6)
 `examples/09_debugging_production.md`:
 Masking works on **`f_locals` route only**. The following are not eligible:
@@ -3089,7 +3089,7 @@ The materials reviewed in this chapter can be summarized as follows.
 ---
 
 ### 5.23 Summary of this chapter
-D-SafeLogger v23j features can be organized into five feature categories:
+D-SafeLogger v23k features can be organized into five feature categories:
 1. **File I/O system**: 9 types of Append-Only routing / generation management + archive / external rotation coexistence / SHA-256 integrity verification. Architecturally avoids Windows file locking issues and integrates with audit workflows with `sha256sum -c` compatibility.
 2. **Log generation/display system**: 4 Formatter variants / `file_fmt` / `console_fmt` per-sink configuration / `contextualize` (FrozenContext) / `register_level` / color palette / diagnose / sens_kws masking. `LogRecord` maintains stdlib compatibility through non-destructive handling and display proxies.
 3. **Concurrent/asynchronous system**: `is_async` (QueueTransport) / 5-state life cycle / free-threaded support / start empty Context of internal thread / `_lifecycle_lock` (RLock). Protect shared state with GIL-independent explicit locks.
@@ -3098,12 +3098,12 @@ D-SafeLogger v23j features can be organized into five feature categories:
 All of these functional groups map to the five design themes identified in §1.3: “do not depend,” “do not break,” “do not degrade silently,” “make failures explainable,” and “extend but do not replace.” This confirms the connection between the design concepts extracted in Chapter 1 and their feature-level implementation.
 ---
 
-> **Main reference materials for this chapter**: `docs/design/D_SafeLogger_Specification_v23j_full.md` §1, §2, §3, §4, §5, §6, §7, §8, §9, §10, §11, §12 / `docs/design/D-SafeLogger_DetailedDesign_v23j.md` §1, §2, §4, §5, §6, §7, §8, §11, §12, §13, §14, §15, §15a, §16, §17, §18, §19 / `docs/api/dsafelogger*.md` / `src/dsafelogger/` Module configuration / `examples/01_*.md`~`examples/17_*.md`
-> This document is intended to explain and evaluate the current v23j architecture, and does not include improvement proposals, issue management, or future roadmaps.
+> **Main reference materials for this chapter**: `docs/design/D_SafeLogger_Specification_v23k_full.md` §1, §2, §3, §4, §5, §6, §7, §8, §9, §10, §11, §12 / `docs/design/D-SafeLogger_DetailedDesign_v23k.md` §1, §2, §4, §5, §6, §7, §8, §11, §12, §13, §14, §15, §15a, §16, §17, §18, §19 / `docs/api/dsafelogger*.md` / `src/dsafelogger/` Module configuration / `examples/01_*.md`~`examples/17_*.md`
+> This document is intended to explain and evaluate the current v23k architecture, and does not include improvement proposals, issue management, or future roadmaps.
 ## Chapter 6 Competitive Project Comparison
 ### 6.1 Chapter 6 Scope and Policy
 #### 6.1.1 Comparison target
-In this chapter, we will identify the following eight major logging libraries that can be selected as candidates for modern Python applications, confirm the specifications using the primary source, and then organize the differences with D-SafeLogger v23j.
+In this chapter, we will identify the following eight major logging libraries that can be selected as candidates for modern Python applications, confirm the specifications using the primary source, and then organize the differences with D-SafeLogger v23k.
 | # | Project | Obtain PyPI version | Primary source verification date |
 |---|---|---|---|
 | 1 | **stdlib `logging`** | Python 3.14 (official docs) | 2026-05-09 |
@@ -3115,7 +3115,7 @@ In this chapter, we will identify the following eight major logging libraries th
 | 7 | **logfire** (Pydantic) | 4.32.1 | 2026-05-09 |
 | 8 | **OpenTelemetry Python SDK (Logs)** | opentelemetry-sdk 1.41.1 | 2026-05-09 |
 #### 6.1.2 Comparison axis
-Compare each library on the following nine axes based on the architectural characteristics of D-SafeLogger v23j.
+Compare each library on the following nine axes based on the architectural characteristics of D-SafeLogger v23k.
 | Axis | Perspective |
 |---|---|
 | Runtime external dependencies | Number of supply chain routes |
@@ -3236,7 +3236,7 @@ Key facts:
 Organize the number of runtime external dependencies (packages installed at the same time during installation) for each project from the primary source (PyPI metadata).
 | Project | Number of runtime dependencies | Breakdown |
 |---|---:|---|
-| **D-SafeLogger v23j** | **0** | None (standard library only) |
+| **D-SafeLogger v23k** | **0** | None (standard library only) |
 | stdlib `logging` | 0 | (Python standard library itself) |
 | Loguru 0.7.3 | 3 (conditional) | `colorama` (Windows), `aiocontextvars` (<3.7), `win32-setctime` (Windows) |
 | structlog 25.5.0 | 1 (conditional) | `typing-extensions` (<3.11) |
@@ -3311,7 +3311,7 @@ The official recommended pattern for this is separate process operation of `Queu
 #### 6.5.3 Uniqueness of D-SafeLogger
 D-SafeLogger's append-only routing (design document §7.2) **structurally avoids the OS-specific failure modes of rename-based rotation at the design level**.
 > Similar ideas can be seen in specific options such as Logback and Log4j2, but no design with this as the default core exists in the Python ecosystem.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §7.2)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §7.2)
 Even within the scope of this primary source investigation (stdlib / Loguru / structlog / picologging / Eliot / Logbook / logfire / OTel), **no projects with append-only routing as the core architecture were observed**. Loguru's rotation function is a general method that involves file rename (section `loguru.readthedocs.io` rotation).
 ---
 
@@ -3419,7 +3419,7 @@ Since picologging is based on C extension, `Py_mod_gil` compatibility is require
 #### 6.9.2 Uniqueness of D-SafeLogger
 Design document §1 specifies:
 >In addition to the normal build, include **free-threaded build for Python 3.13 or higher** in the design target. However, the implementation does not depend on the 3.14-specific API, and uses a method that can be unified with 3.11+.
-> (`docs/design/D_SafeLogger_Specification_v23j_full.md` §1)
+> (`docs/design/D_SafeLogger_Specification_v23k_full.md` §1)
 Design document §2 / §9.2 / §9.4 / §9.5 stipulates explicit locking of shared state, implicit atomicity independence of `list` / `dict`, reprized snapshot of `f_locals`, and empty Context start of internal threads at the specification level. This is consistent with PEP 703's "explicit locking required" requirement.
 `TESTING.md` documents the following manual test command for free-threaded builds:
 ```bash
@@ -3471,9 +3471,9 @@ D-SafeLogger's three-layer pipeline has observable differentiation in the follow
 ---
 
 ### 6.12 Latest status summary by library
-| Item | D-SafeLogger v23j | stdlib `logging` | Loguru 0.7.3 | structlog 25.5.0 | picologging 0.9.3 | Eliot 1.18.0 | Logbook 1.9.2 | logfire 4.32.1 | OTel SDK 1.41.1 |
+| Item | D-SafeLogger v23k | stdlib `logging` | Loguru 0.7.3 | structlog 25.5.0 | picologging 0.9.3 | Eliot 1.18.0 | Logbook 1.9.2 | logfire 4.32.1 | OTel SDK 1.41.1 |
 |---|---|---|---|---|---|---|---|---|---|
-| Latest release date | (v23j/0.2.1, as of this report) | Python 3.14 | 2024-12-06 | 2025-10-27 | 2024-09-13 (GitHub) | 2026-05-07 | — | (4.32.1) | (1.41.1) |
+| Latest release date | (v23k/0.2.1, as of this report) | Python 3.14 | 2024-12-06 | 2025-10-27 | 2024-09-13 (GitHub) | 2026-05-07 | — | (4.32.1) | (1.41.1) |
 | License | Apache 2.0 | PSF | MIT | MIT or Apache-2.0 | MIT | Apache 2.0 | BSD-3-Clause | MIT | Apache-2.0 |
 | Python requirements | >=3.11 | (Python itself) | >=3.5,<4 | >=3.8 | >=3.7 | >=3.10.0 | >=3.9 | >=3.9 | >=3.9 |
 | Number of runtime dependencies | **0** | 0 | 3 (conditional) | 1 (conditional) | 0 | 4 | 1 | 8 | 3 |
@@ -3546,7 +3546,7 @@ The primary sources confirmed in this chapter can be summarized as follows.
 ---
 
 ### 6.15 Summary of this chapter
-The position of D-SafeLogger v23j in the ecosystem can be summarized in the following five points:
+The position of D-SafeLogger v23k in the ecosystem can be summarized in the following five points:
 1. **There is no direct conflict and the design axis is unique**: The combination of append-only routing × integrity verification × multiprocess writer × delivery state 7-layer classification × free-threaded support × 3-layer configuration pipeline × zero dependence on pure Python is not observed in other projects within the scope of this primary source investigation.
 2. **Among stdlib extension types, D-SafeLogger is the only functionally differentiated type**: picologging is the same extension type, but the purpose is "speed differentiation". It occupies a different niche from the replacement type of Loguru / Logbook and the parallel / bridge type of structlog / Eliot / logfire / OTel.
 3. **Direct response to stdlib official known constraints**: Active log cannot be renamed on Windows, multiprocess single file not supported, these two constraints are clearly stated in the Python official docs themselves, and D-SafeLogger's append-only routing and parent-side Writer are direct responses to these.
@@ -3555,8 +3555,8 @@ The position of D-SafeLogger v23j in the ecosystem can be summarized in the foll
 These points are revisited in the next chapter, “7. Positioning at OSS Release,” as **positioning logic** for evaluating fit with the supply-chain-focused segment, Windows operations segment, audit segment, free-threaded migration segment, stdlib-conservative segment, and multiprocess-audit segment.
 ---
 
-> **Main reference materials for this chapter**: D-SafeLogger publication materials: `docs/design/D_SafeLogger_Specification_v23j_full.md` §1, §2, §3, §7.2, §11, §12 / `README.md` / `BENCHMARK.md` / `examples/08_compliance_audit.md` / `examples/15_opentelemetry_logging.md` / `examples/16_structlog_coexistence.md`. Primary source: `pypi.org/pypi/loguru/json` / `pypi.org/pypi/structlog/json` / `pypi.org/pypi/picologging/json` / `pypi.org/pypi/eliot/json` / `pypi.org/pypi/Logbook/json` / `pypi.org/pypi/logfire/json` / `pypi.org/pypi/opentelemetry-sdk/json` / `docs.python.org/3/library/logging.html` / `docs.python.org/3/library/logging.handlers.html` / `docs.python.org/3/howto/logging-cookbook.html` / `docs.python.org/3/whatsnew/3.13.html` / `peps.python.org/pep-0703/` / `github.com/Delgan/loguru` / `github.com/microsoft/picologging` / `www.structlog.org` / `eliot.readthedocs.io` / `logbook.readthedocs.io` / `pydantic.dev/docs/logfire/` / `github.com/pydantic/logfire` / `opentelemetry.io/docs/specs/otel/logs/` / `opentelemetry.io/docs/languages/python/instrumentation/`. Confirmation date: 2026-05-09.
-> This document is intended to explain and evaluate the current v23j architecture, and does not include improvement proposals, issue management, or future roadmaps. Private planning materials are excluded from reference.
+> **Main reference materials for this chapter**: D-SafeLogger publication materials: `docs/design/D_SafeLogger_Specification_v23k_full.md` §1, §2, §3, §7.2, §11, §12 / `README.md` / `BENCHMARK.md` / `examples/08_compliance_audit.md` / `examples/15_opentelemetry_logging.md` / `examples/16_structlog_coexistence.md`. Primary source: `pypi.org/pypi/loguru/json` / `pypi.org/pypi/structlog/json` / `pypi.org/pypi/picologging/json` / `pypi.org/pypi/eliot/json` / `pypi.org/pypi/Logbook/json` / `pypi.org/pypi/logfire/json` / `pypi.org/pypi/opentelemetry-sdk/json` / `docs.python.org/3/library/logging.html` / `docs.python.org/3/library/logging.handlers.html` / `docs.python.org/3/howto/logging-cookbook.html` / `docs.python.org/3/whatsnew/3.13.html` / `peps.python.org/pep-0703/` / `github.com/Delgan/loguru` / `github.com/microsoft/picologging` / `www.structlog.org` / `eliot.readthedocs.io` / `logbook.readthedocs.io` / `pydantic.dev/docs/logfire/` / `github.com/pydantic/logfire` / `opentelemetry.io/docs/specs/otel/logs/` / `opentelemetry.io/docs/languages/python/instrumentation/`. Confirmation date: 2026-05-09.
+> This document is intended to explain and evaluate the current v23k architecture, and does not include improvement proposals, issue management, or future roadmaps. Private planning materials are excluded from reference.
 ## Chapter 7 Positioning at OSS Release
 ### 7.1 Scope and policy of this chapter
 #### 7.1.1 Scope of this chapter
@@ -3829,7 +3829,7 @@ The following are **observable trends** in the technical community and operation
 Correspondence between domestic operational environment characteristics (Windows business system ratio, Japanese document affinity, on-premises operation in regulated industries) and this library's characteristic axis:
 - **Append-Only Routing × Windows Server Adopting Organizations**: Direct response to stdlib official known constraints identified in §7.3.
 - **SHA-256 completeness × Domestic regulated industries (financial, medical, public)**: Compliant with audit log requirements confirmed in §7.4. `sha256sum -c` compatibility and verifiability using OS standard commands correspond to the requirement of ``minimizing the introduction of external tools'' in domestic on-premise operations.
-- **`README_ja.md` + Japanese design document**: The design document (`docs/design/D_SafeLogger_Specification_v23j_full.md`) is written in Japanese, and the ability to refer to the context of design decisions in their native language will help reduce learning costs for domestic developers.
+- **`README_ja.md` + Japanese design document**: The design document (`docs/design/D_SafeLogger_Specification_v23k_full.md`) is written in Japanese, and the ability to refer to the context of design decisions in their native language will help reduce learning costs for domestic developers.
 These are not predictions that the library will “become popular domestically”; they are a logical summary of characteristics that align with operational requirement patterns observed in Japan.
 #### 7.9.4 Logical response to overseas countries
 Correspondence between overseas technical community characteristics (Linux-based, OpenTelemetry ecosystem expansion, OSS contribution activity, supply chain regulatory requirements) and this library's characteristics:
@@ -3868,7 +3868,7 @@ Facts that can be confirmed from `pyproject.toml` and `MANIFEST.in`:
 - Operation guide: `TESTING.md` / `BENCHMARK.md` / `CONTRIBUTING.md` / `CHANGELOG.md`
 #### 7.10.3 Quality Gate
 `TESTING.md` and public validation procedures:
-- v23j local validation on Python 3.14.3 / Windows: **658 passed, 3 skipped** (661 collected, `uv run pytest tests -v`)
+- v23k local validation on Python 3.14.3 / Windows: **658 passed, 3 skipped** (661 collected, `uv run pytest tests -v`)
 - The skipped count is platform-dependent because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
 - Coverage: terminal total **87%**, XML line-rate **88.97%**, branch-rate **81.46%**
 - multiprocess tests / OTel/structlog coexistence tests are included in the official quality gate
@@ -3942,7 +3942,7 @@ The observed facts referenced in this chapter can be summarized as follows. This
 ---
 
 ### 7.13 Summary of this chapter
-The positioning of D-SafeLogger v23j at the time of OSS release can be logically summarized into the following five points:
+The positioning of D-SafeLogger v23k at the time of OSS release can be logically summarized into the following five points:
 1. **Although no direct competition is observed in the scope of this primary source study, this is not a prediction of ``widespread popularity''**. Since the design purpose is "to support subset organizations with specific operational requirements," the design axis is different from the DX improvement axis such as Loguru / structlog.
 2. **The six segments (supply chain / Windows / audit / free-threaded / stdlib conservative / multiprocess audit) are logical fit axes**. These structures are not independent; they overlap.
 3. **There are five common response axes in Japan and overseas**: Regulated industry tampering detection / supply chain requirements / stdlib existing asset protection / OpenTelemetry coexistence / free-threaded migration consideration. It is observed as an axis with no regional differences.
@@ -3951,13 +3951,13 @@ The positioning of D-SafeLogger v23j at the time of OSS release can be logically
 These points are summarized in the next chapter, “8. Overall Evaluation,” as the final technical positioning based on the objective facts of this report as a whole.
 ---
 
-> **Main references for this chapter**: Only the content referenced in Chapters 1 to 6. No new primary sources were added. `docs/design/D_SafeLogger_Specification_v23j_full.md` §1, §2, §11.2, §12.1 / `README.md` Compatibility/Non-goals section / `BENCHMARK.md` What Not To Claim section / `examples/08_compliance_audit.md` Threat Model section / `examples/12_multiprocess_logging.md` Section 3 / Section 6 All primary sources identified in chapter.
+> **Main references for this chapter**: Only the content referenced in Chapters 1 to 6. No new primary sources were added. `docs/design/D_SafeLogger_Specification_v23k_full.md` §1, §2, §11.2, §12.1 / `README.md` Compatibility/Non-goals section / `BENCHMARK.md` What Not To Claim section / `examples/08_compliance_audit.md` Threat Model section / `examples/12_multiprocess_logging.md` Section 3 / Section 6 All primary sources identified in chapter.
 ## Chapter 8 Overall Evaluation
 ### 8.1 Scope of this chapter
-This chapter **aggregates** the observed facts organized individually in Chapters 1 to 7, and presents the position that can be described as the **reaching point** of the current v23j architecture.
+This chapter **aggregates** the observed facts organized individually in Chapters 1 to 7, and presents the position that can be described as the **reaching point** of the current v23k architecture.
 #### 8.1.1 Reconfirming the scope of this document
 Reiterating the overall scope of this whitepaper:
-1. **Does not include improvement proposals, issue management, or future roadmaps**: This document is intended to explain and evaluate the current architecture as of v23j, and is not a replacement for the issue tracker/roadmap.
+1. **Does not include improvement proposals, issue management, or future roadmaps**: This document is intended to explain and evaluate the current architecture as of v23k, and is not a replacement for the issue tracker/roadmap.
 2. **Handling of competitive information**: Prioritize facts that can be confirmed from public primary sources, and do not make conclusions about matters that cannot be confirmed.
 3. **OSS-release positioning**: We do not make predictions about adoption, popularity, or market response; we limit the discussion to design positioning that can be confirmed from published materials.
 This chapter inherits this scope and only **organizes the goals**.
@@ -4067,7 +4067,7 @@ When we summarize the "design attitude" observed individually in Chapters 1 to 7
 | **Actively clarifying boundaries** | "Declaration of warranty and non-guarantee scope in advance in document" | HMAC outside scope / Meaning of `UnexplainedLost` / Writer does not guarantee / What Not To Claim |
 | **Maintain standardness** | "Do not break the semantics of stdlib" | addLevelName() not used / record.levelname unchanged / QueueHandler.prepare() complete override |
 | **Responsibility delegation** | "Separate the responsibility to the OS/external tools instead of keeping it in the library" | HMAC external delegation / `sha256sum -c` compatible / logrotate coexistence / log shipping is external |
-These eight axes are not a coincidence of the v23j single edition, but are observed as a system of design decisions derived from the absolute conditions of Design Document §1 (``Complete compliance with the standard library'' and ``zero external dependencies'') and the Writer invariants of §12.1 (``Avoid silent loss/hang/fallback'').
+These eight axes are not a coincidence of the v23k single edition, but are observed as a system of design decisions derived from the absolute conditions of Design Document §1 (``Complete compliance with the standard library'' and ``zero external dependencies'') and the Writer invariants of §12.1 (``Avoid silent loss/hang/fallback'').
 ---
 
 ### 8.5 Ecosystem position
@@ -4126,9 +4126,9 @@ Boundaries that public bench analysis actively enumerates:
 |---|---|---|
 | Entrance | `README.md` / `README_ja.md` | 217 lines each |
 | Learning | `examples/01_*.md`〜`examples/17_*.md` | 17 files |
-| Design | `docs/design/D_SafeLogger_Specification_v23j_full.md` | 2,477 lines |
-| Design | `docs/design/D-SafeLogger_DetailedDesign_v23j.md` | 4,258 lines |
-| Design | `docs/design/D-SafeLogger_TestDesign_v23j.md` | 135 lines |
+| Design | `docs/design/D_SafeLogger_Specification_v23k_full.md` | 2,477 lines |
+| Design | `docs/design/D-SafeLogger_DetailedDesign_v23k.md` | 4,258 lines |
+| Design | `docs/design/D-SafeLogger_TestDesign_v23k.md` | 135 lines |
 | API | `docs/api/dsafelogger*.md` | Automatically generated |
 | Operation | `TESTING.md` / `BENCHMARK.md` / `CONTRIBUTING.md` / `CHANGELOG.md` | — |
 #### 8.7.2 Quality Gate
@@ -4161,7 +4161,7 @@ Based on the observed facts in this report as a whole, we have summarized the ob
 2. **Design purpose is not "widespread dissemination" but "conformity to specific operational requirements"**: §1 of the design document clearly states that ``the top priority is to operate as a common base for the D ecosystem rather than the purpose of wide dissemination,'' and the multiprocess scope specification in §11.2 explicitly excludes remote aggregation / network protocols. This is consistent with a design attitude that prioritizes support for subset organizations.
 3. **Although no direct feature conflicts are observed, this does not mean ``the strongest''**: Each major conflict (Loguru / structlog / picologging / Eliot / logfire / OpenTelemetry) champions a different axis and can coexist because their responsibility axes do not intersect. This library is positioned as a "champion of a specific axis."
 #### 8.8.2 Consistency of design attitude
-4. **The 8-axis design attitude is consistent throughout the library**: structural exclusion / separation of responsibilities / failure classification / absolute line of defense / opt-in boundary definition / active boundary definition / standardness maintenance / responsibility delegation. These are not a coincidence of the v23j single edition, but are observed as a system of design decisions derived from the absolute conditions of design document §1 and the Writer invariant conditions of §12.1.
+4. **The 8-axis design attitude is consistent throughout the library**: structural exclusion / separation of responsibilities / failure classification / absolute line of defense / opt-in boundary definition / active boundary definition / standardness maintenance / responsibility delegation. These are not a coincidence of the v23k single edition, but are observed as a system of design decisions derived from the absolute conditions of design document §1 and the Writer invariant conditions of §12.1.
 5. **Guaranteed scope and non-guaranteed scope are actively specified in the document**: The HMAC outside scope, meaning of `UnexplainedLost`, Writer does not guarantee, and What Not To Claim sections are observed as an operational attitude to "prevent misuse due to excessive expectations."
 #### 8.8.3 Supporting stdlib formal constraints
 6. **Designed to directly respond to the known constraints stdlib official document**: Append-only routing and parent-side Writer function as direct responses to the inability to rename active logs on Windows (`logging.handlers` WatchedFileHandler clause) and non-support for multiprocess single files (cookbook).
@@ -4174,20 +4174,20 @@ Based on the observed facts in this report as a whole, we have summarized the ob
 ---
 
 ### 8.9 Summary of this chapter
-D-SafeLogger v23j can be organized into the following overall picture:
+D-SafeLogger v23k can be organized into the following overall picture:
 1. **The units of architectural value are summarized in 7**: stdlib Stable as an extension point / Strengthen below the file boundary / Classify and explain failures / Prevent accident patterns from being established structurally / Protect the host process with an absolute line of defense / Narrowly divide the scope of responsibility into external tools / Extend but do not replace.
 2. **The 8-axis design attitude is consistent throughout the library**: structural exclusion / separation of responsibilities / failure classification / absolute line of defense / opt-in boundary definition / active boundary definition / standardness maintenance / responsibility delegation.
 3. **Position in the ecosystem can be summarized into 4 propositions**: Direct competition is not observed / stdlib extended type × Occupies a functionally differentiated niche / stdlib Direct response to known constraints of the official formula / Aiming for coexistence rather than competition.
 4. **Benchmark observation facts are based on observability rather than raw throughput**: single-process async has competitive numbers, multiprocess is inferior to stdlib in raw throughput, but provides unique observability in terms of explainability of delivery status.
 5. **Documentation/operation structure is maintained with internal synchronization verification and active definition of boundaries**: Over 9,547 lines of public documentation + automatically generated API + multilingual README + manifest fixed benchmark + quality gate test matrix.
-These are a collection of observations that show that the absolute condition of design document §1, ``Complete compliance with the standard library, while achieving diagnostic capabilities that surpass third-party libraries (such as Loguru) and robustness that avoids fatal file locking problems in Windows environments, with zero external dependencies,'' has been reached in a consistent form across all layers of specification, design, implementation, testing, documentation, and benchmarking as of v23j.
+These are a collection of observations that show that the absolute condition of design document §1, ``Complete compliance with the standard library, while achieving diagnostic capabilities that surpass third-party libraries (such as Loguru) and robustness that avoids fatal file locking problems in Windows environments, with zero external dependencies,'' has been reached in a consistent form across all layers of specification, design, implementation, testing, documentation, and benchmarking as of v23k.
 ---
 
 ### 8.10 Limitations of this report
 This report has the following limitations. These are not deficiencies in this report, but items that were intentionally left outside the scope of the evaluation policy.
 #### 8.10.1 Items not evaluated
 - **Adoption/popularity prediction**: This white paper does not predict adoption rate, popularity, or response.
-- **Improvement suggestions/Identification of issues**: This document is intended to explain and evaluate the current architecture as of v23j, and is not a replacement for the issue tracker/roadmap.
+- **Improvement suggestions/Identification of issues**: This document is intended to explain and evaluate the current architecture as of v23k, and is not a replacement for the issue tracker/roadmap.
 - **Predicting adoption rate**: Same as above.
 - **GitHub stars / PyPI download Comparison of superiority and inferiority**: Although the popularity index was cited as a fact, it was not used for comparison on the design axis.
 #### 8.10.2 Scope of primary source verification
@@ -4196,9 +4196,9 @@ This report has the following limitations. These are not deficiencies in this re
 #### 8.10.3 Technical areas not covered by this report
 - **Details of the code quality of this library**: The implementation quality of individual functions and the presence or absence of bugs are separate code review areas, and this report is limited to the observed facts of public design documents, public benches, examples, and public API documents.
 - **Details of behavior specific to a specific OS/specific Python version**: Only the scope specified in the public materials was covered.
-- **Future version design prediction**: The direction of v24+ is not covered as the policy is to take the current v23j architecture as a given.
+- **Future version design prediction**: The direction of v24+ is not covered as the policy is to take the current v23k architecture as a given.
 #### 8.10.4 Checking the scope of this report
-- The purpose of this document is to organize and evaluate the **D-SafeLogger v23j architecture**. It (a) does not include improvement proposals or issue management, (b) limits competitive information to facts that can be confirmed from public primary sources, and (c) avoids predicting adoption rates, popularity, or reactions.
+- The purpose of this document is to organize and evaluate the **D-SafeLogger v23k architecture**. It (a) does not include improvement proposals or issue management, (b) limits competitive information to facts that can be confirmed from public primary sources, and (c) avoids predicting adoption rates, popularity, or reactions.
 - Private planning materials were not referenced in all chapters, and `docs/design/` was used as the primary design document.
 ---
 
@@ -4214,9 +4214,9 @@ This white paper has been prepared in accordance with the following reference po
 | Public README | `README.md` / `README_ja.md` |
 | Public bench analysis | `BENCHMARK.md` |
 | Public bench raw data | `benchmarks/summary/*.md`, `benchmarks/summary/manifest.json`, `benchmarks/results/<selected>/summary.{md,json}` |
-| Public design document | `docs/design/D_SafeLogger_Specification_v23j_full.md` (2,477 lines) |
-| Public design document | `docs/design/D-SafeLogger_DetailedDesign_v23j.md` (4,258 lines) |
-| Public design document | `docs/design/D-SafeLogger_TestDesign_v23j.md` (135 lines) |
+| Public design document | `docs/design/D_SafeLogger_Specification_v23k_full.md` (2,477 lines) |
+| Public design document | `docs/design/D-SafeLogger_DetailedDesign_v23k.md` (4,258 lines) |
+| Public design document | `docs/design/D-SafeLogger_TestDesign_v23k.md` (135 lines) |
 | Public API Documentation | `docs/api/dsafelogger*.md` |
 | Publication Guide | `TESTING.md` / `CONTRIBUTING.md` / `CHANGELOG.md` |
 | License | `LICENSE` (Apache License 2.0) |
@@ -4242,9 +4242,9 @@ Claims that cannot be corroborated by primary sources are not accepted.
 ## Appendix B. Primary Source List (as of 2026-05-09)
 Enumerate all primary source URLs referenced in Chapter 6.
 ### B.1 D-SafeLogger Publication materials
--`docs/design/D_SafeLogger_Specification_v23j_full.md`
--`docs/design/D-SafeLogger_DetailedDesign_v23j.md`
--`docs/design/D-SafeLogger_TestDesign_v23j.md`
+-`docs/design/D_SafeLogger_Specification_v23k_full.md`
+-`docs/design/D-SafeLogger_DetailedDesign_v23k.md`
+-`docs/design/D-SafeLogger_TestDesign_v23k.md`
 - `docs/api/dsafelogger*.md`
 - `README.md` / `README_ja.md`
 -`BENCHMARK.md`
@@ -4349,7 +4349,7 @@ This white paper is based on public primary sources such as `README.md` / `READM
 The final content has been confirmed and adopted by the project maintainer, and the original specifications, behavior, and verification results are the following artifacts:
 - Source code: `src/dsafelogger/`
 - Test: `tests/`
-- Public design document: `docs/design/D_SafeLogger_Specification_v23j_full.md` / `D-SafeLogger_DetailedDesign_v23j.md` / `D-SafeLogger_TestDesign_v23j.md`
+- Public design document: `docs/design/D_SafeLogger_Specification_v23k_full.md` / `D-SafeLogger_DetailedDesign_v23k.md` / `D-SafeLogger_TestDesign_v23k.md`
 - Public benchmark artifacts: `BENCHMARK.md`, `benchmarks/summary/*.md`, `benchmarks/results/<selected>/`
 - Public API reference: `docs/api/`
 If there is a discrepancy between this document and those originals, the originals take precedence.
@@ -4359,8 +4359,8 @@ The final content was reviewed and accepted by the project maintainer. The sourc
 ---
 
 ## end of document
-This document organizes and evaluates the current architecture as of D-SafeLogger v23j.
-- **Does not include improvement suggestions**: This document is intended to explain and evaluate the architecture as of v23j, and is not a replacement for the issue tracker/roadmap.
+This document organizes and evaluates the current architecture as of D-SafeLogger v23k.
+- **Does not include improvement suggestions**: This document is intended to explain and evaluate the architecture as of v23k, and is not a replacement for the issue tracker/roadmap.
 - **Competitive information is based on public primary sources**: Primary source confirmed as of 2026-05-09. The situation may change with future updates.
 - **Do not predict adoption rate, popularity, or response**: Limited to organizing design positioning.
 Design predictions for future versions (v24+), implementation quality reviews of individual functions, and detailed behavior specific to specific OS/Python versions are outside the scope of this document.
@@ -4368,3 +4368,11 @@ Design predictions for future versions (v24+), implementation quality reviews of
 
 > This white paper is published under the Apache License 2.0. This is the same license as this library itself.
 > © 2026 D-SafeLogger contributors
+
+## v23k Multiprocess Observability Note
+
+The v23k multiprocess API covers not only Writer-owned sinks but also delivery-state accountability in environments where stderr is unavailable. `runtime_warning_path` preserves runtime and transport warnings as JSONL, and `shutdown_report_path` preserves the final accounting snapshot as JSON. `mp.GetDeliveryStatus()` exposes an in-process `DeliveryStatus` snapshot through the public API.
+
+This observability layer is separated from the application log pipeline. Sink failures and control-plane failures are not re-injected into application handlers; a dedicated warning queue and fallback JSONL files avoid recursive logging. `diagnose` remains application-record diagnostics, runtime warnings describe logging-runtime failures, and delivery status/report describe delivery accounting.
+
+The multiprocess runtime assumes Writer and workers use the same installed package version. It does not claim impossible durability under every abnormal failure; instead it makes delivery state observable through accepted, delivered, partial, known rejected, known dropped, unexplained lost, and source-separated breakdown fields.

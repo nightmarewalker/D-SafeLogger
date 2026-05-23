@@ -6,6 +6,10 @@ Process-local multiprocess attach state and client-side transport.
 
 ## Functions
 
+### `_build_local_drop_summary(state: 'MPProcessState') -> 'dict[str, int]'`
+
+Aggregate root and module transport counters for DETACH.
+
 ### `_cleanup_process_local_state(state: 'MPProcessState') -> 'None'`
 
 ### `_do_attach(ctx: 'BootstrapContext') -> 'None'`

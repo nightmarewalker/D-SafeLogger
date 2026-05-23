@@ -1,8 +1,8 @@
 """Validate wheel and sdist contents for the D-SafeLogger distribution.
 
 Faithfully migrated from the inline heredoc in publish.yml (A6=Z1: faithful
-migration only). Additions over the original: ``dsafelogger/py.typed`` in the
-wheel required set and ``src/dsafelogger/py.typed`` in the sdist required set.
+migration only). Additions over the original include ``py.typed`` checks and
+current observability/design/benchmark artifacts that must ship in sdist/wheel.
 
 Exit code 0 = OK, non-zero = error details printed to stderr.
 """
@@ -60,6 +60,8 @@ def main() -> int:
         "build/",
     )
     wheel_required = {
+        "dsafelogger/_runtime_warning.py",
+        "dsafelogger/_shutdown_report.py",
         "dsafelogger/py.typed",
     }
     sdist_required = {
@@ -74,14 +76,19 @@ def main() -> int:
         "MANIFEST.in",
         "pyproject.toml",
         "src/dsafelogger/__init__.py",
+        "src/dsafelogger/_runtime_warning.py",
+        "src/dsafelogger/_shutdown_report.py",
         "src/dsafelogger/py.typed",
         "tests/conftest.py",
-        "docs/design/D_SafeLogger_Specification_v23j_full.md",
-        "docs/design/D_SafeLogger_Specification_v23j_full_en.md",
-        "docs/design/D-SafeLogger_DetailedDesign_v23j.md",
-        "docs/design/D-SafeLogger_TestDesign_v23j.md",
-        "docs/design/D-SafeLogger_v23j_WhitePaper.md",
-        "docs/design/D-SafeLogger_v23j_WhitePaper_en.md",
+        "docs/design/D_SafeLogger_Specification_v23k_full.md",
+        "docs/design/D_SafeLogger_Specification_v23k_full_en.md",
+        "docs/design/D-SafeLogger_DetailedDesign_v23k.md",
+        "docs/design/D-SafeLogger_TestDesign_v23k.md",
+        "docs/design/D-SafeLogger_v23k_WhitePaper.md",
+        "docs/design/D-SafeLogger_v23k_WhitePaper_en.md",
+        "docs/design/v23k_supplements/delivery_status_schema.md",
+        "docs/design/v23k_supplements/mp_observability_test_matrix.md",
+        "docs/design/v23k_supplements/runtime_warning_design.md",
         "examples/01_quick_start.md",
         "examples/17_container_collector_coexistence.md",
         "benchmarks/_benchmark_report.py",
@@ -94,8 +101,8 @@ def main() -> int:
         "benchmarks/results/benchmarks_multi_integ_20260506_185947/summary.md",
         "benchmarks/results/benchmarks_multi_perf_20260506_190518/summary.json",
         "benchmarks/results/benchmarks_multi_perf_20260506_190518/summary.md",
-        "benchmarks/results/benchmarks_multi_resilience_20260506_211129/summary.json",
-        "benchmarks/results/benchmarks_multi_resilience_20260506_211129/summary.md",
+        "benchmarks/results/benchmarks_multi_resilience_20260523_084326/summary.json",
+        "benchmarks/results/benchmarks_multi_resilience_20260523_084326/summary.md",
     }
 
     errors: list[str] = []

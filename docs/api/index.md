@@ -29,6 +29,8 @@ Most users should start with `dsafelogger` and `dsafelogger.mp`. Modules whose n
 - [Configuration Pipeline](dsafelogger__pipeline.md) - `dsafelogger._pipeline`
 - [Purge / Archive Workers](dsafelogger__purge.md) - `dsafelogger._purge`
 - [Routing Strategies](dsafelogger__routing.md) - `dsafelogger._routing`
+- [dsafelogger._runtime_warning](dsafelogger__runtime_warning.md) - `dsafelogger._runtime_warning`
+- [dsafelogger._shutdown_report](dsafelogger__shutdown_report.md) - `dsafelogger._shutdown_report`
 - [Sink Configuration](dsafelogger__sink.md) - `dsafelogger._sink`
 - [Transport Configuration](dsafelogger__transport.md) - `dsafelogger._transport`
 - [Path Validator](dsafelogger__validator.md) - `dsafelogger._validator`

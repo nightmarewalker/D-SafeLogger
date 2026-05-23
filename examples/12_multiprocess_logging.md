@@ -17,7 +17,7 @@ This guide answers:
 - How structured logging, `extra`, `contextualize`, and custom log levels behave across processes.
 - The four multiprocess environment variables and when to touch them.
 - What the runtime does under backpressure, sink unavailability, worker crash, and mixed shutdown.
-- How to read the delivery-state counters and the shutdown summary.
+- How to read delivery-state counters, runtime warning files, and shutdown reports.
 - `mp.ReopenLogFiles()` for external rotation.
 - A checklist of common failure modes and a troubleshooting section.
 
@@ -28,7 +28,7 @@ The single-process tutorial in [`01_quick_start.md`](01_quick_start.md) and the 
 Use it when:
 
 - Multiple worker processes need to write to a shared destination, and you do not want each worker to open its own copy of the file (which on Windows is fragile and on every OS makes routing/manifest accounting much harder).
-- You want one place to look for delivery-state counters and shutdown summaries across all workers.
+- You want one place to look for delivery-state counters, runtime warnings, and shutdown reports across all workers.
 - You need centralized integrity sidecars and manifest entries instead of per-worker fragments.
 
 You do not need it when:
@@ -79,7 +79,7 @@ Key invariants:
 - The Writer runtime lives in the parent process. It owns the file sinks, routing strategy, integrity sidecars, manifest, archive/purge, and reopen.
 - Workers **never** open the shared log files directly. They submit `LogEvent` messages over an IPC queue.
 - The control plane (attach, detach, reopen, bootstrap-ready) uses a separate IPC queue and a `Pipe` for ACKs.
-- Delivery-state counters and the shutdown summary are produced by the Writer side, not by individual workers.
+- Delivery-state counters, runtime warnings, and shutdown reports are produced by the Writer side, not by individual workers. If a worker cannot reach the Writer warning IPC path, it writes a local fallback warning file.
 
 ## 5. Pattern A — `multiprocessing.Process`
 
@@ -321,7 +321,44 @@ Guidelines:
 
 All four variables are validated at parent `mp.ConfigureLogger` time. An unparseable value fails fast (since v23h) instead of being silently ignored.
 
-## 14. Behavior under backpressure
+## 14. Console-less production environments
+
+Production services often run without a useful console or stderr stream. In that case, configure explicit observability output paths:
+
+```python
+from dsafelogger import mp
+
+ctx = mp.ConfigureLogger(
+    log_path="logs",
+    console_out=False,
+    runtime_warning_path="logs/runtime-warning.jsonl",
+    shutdown_report_path="logs/shutdown-report.json",
+)
+```
+
+During runtime, call `mp.GetDeliveryStatus()` from the parent process to read the current Writer accounting snapshot:
+
+```python
+status = mp.GetDeliveryStatus()
+print(status["accepted"], status["delivered"], status["unexplained_lost"])
+print(status["writer_reject_breakdown"])
+print(status["worker_drop_breakdown"])
+print(status["writer_drop_breakdown"])
+```
+
+`runtime_warning_path` is an independent JSON Lines sink. It does not go through application logging, so sink errors and queue/drop warnings do not recursively log through the same failing path. Workers that cannot reach the Writer warning IPC path fall back to per-pid files named `<runtime_warning_path>.<pid>.fallback.jsonl`. Collect both the primary warning file and any fallback files.
+
+`shutdown_report_path` is a final JSON snapshot written by the parent Writer during shutdown. It includes `shutdown_result`, `worker_crash_observed`, `missing_detach_clients`, `missing_detach_client_ids`, `missing_detach_pids`, `warning_queue_drain_incomplete`, and the same delivery accounting fields used by `GetDeliveryStatus()`.
+
+`partial_delivered` is a separate terminal state. It is neither `delivered` (all required sinks succeeded) nor `known_rejected` (zero required sinks succeeded). The writer-side invariant is:
+
+```text
+accepted = delivered + partial_delivered + known_rejected + writer_known_dropped + unexplained_lost
+```
+
+For the complete schema contract, see [`docs/design/v23k_supplements/delivery_status_schema.md`](../docs/design/v23k_supplements/delivery_status_schema.md).
+
+## 15. Behavior under backpressure
 
 When workers produce log records faster than the Writer can drain the queue:
 
@@ -329,7 +366,7 @@ When workers produce log records faster than the Writer can drain the queue:
 2. If the queue is full, the worker waits up to `D_LOG_IPC_LOG_TIMEOUT` seconds.
 3. If the timeout elapses without space, the record is **dropped**, and the worker increments the local `KnownDropped` counter.
 4. None of this hangs the host process indefinitely. There is no path where a single saturated worker can block the others forever.
-5. At shutdown, the parent emits a summary that includes `attempted`, `accepted`, `delivered`, `KnownRejected`, `KnownDropped`, and `UnexplainedLost` totals.
+5. At shutdown, the parent can write a shutdown report that includes `attempted`, `accepted`, `delivered`, `partial_delivered`, `KnownRejected`, `KnownDropped`, and `UnexplainedLost` totals.
 
 What this means in practice:
 
@@ -339,20 +376,20 @@ What this means in practice:
 
 The `multiprocess_resilience` profile in [BENCHMARK.md](../BENCHMARK.md) exercises this scenario and documents what counters the runtime produces.
 
-## 15. Behavior when a sink is unavailable
+## 16. Behavior when a sink is unavailable
 
 A sink can be unavailable for several reasons: the destination directory is missing, the disk is full, the file is locked by another process (most commonly an external rotator on Windows), or permissions changed at runtime.
 
 When the Writer attempts to deliver and the sink rejects:
 
 - The record is classified as `KnownRejected`. It is **not** silently retried until the queue saturates.
-- The rejection cause is surfaced through the runtime's stderr warnings. The Writer does not swallow the exception.
+- The rejection cause is surfaced through runtime warnings. If `runtime_warning_path` is configured, warnings are written as JSON Lines; otherwise stderr is the last-resort visible fallback. The Writer does not swallow the exception.
 - File-sink ownership stays with the Writer. Workers do not see the failure directly — they see the queue continuing to accept records, and the rejection counter rising on the Writer side.
 - Once the underlying condition clears (disk freed, permissions corrected, external rotator releases the file), subsequent records can be delivered. There is no implicit retry of already-rejected records; rejected is a terminal classification.
 
-For external rotation specifically (the rotator owns the file briefly), see section 17.
+For external rotation specifically (the rotator owns the file briefly), see section 18.
 
-## 16. Behavior on worker crash and mixed shutdown
+## 17. Behavior on worker crash and mixed shutdown
 
 A "mixed shutdown" is when some workers exit cleanly through `Detach` and at least one worker terminates abnormally (segfault, `kill -9`, OOM kill, uncaught exception that bypasses `try/finally`).
 
@@ -360,8 +397,9 @@ What the Writer observes:
 
 - Records the crashed worker had already enqueued **before** the crash are still in the IPC queue and will be processed normally.
 - Records that were in flight on the worker side at crash time are lost — the worker process is gone.
-- The Writer cannot distinguish "in flight and lost" from "never produced" for the crashed worker. The shutdown summary distinguishes a clean Writer shutdown that coincided with abnormal worker termination from a fully clean run — in the resilience profile, the corresponding value is `clean_with_worker_crash` rather than `clean` — so the operator can see that some `UnexplainedLost` count is expected for that run.
-- The Writer itself shuts down cleanly: it drains the queue, finalizes counters, and writes the summary even when one or more workers exited abnormally.
+- The Writer cannot distinguish "in flight and lost" from "never produced" for the crashed worker. The shutdown report distinguishes a clean Writer shutdown that coincided with abnormal worker termination from a fully clean run — in the resilience profile, the corresponding value is `clean_with_worker_crash` rather than `clean` — so the operator can see that some incomplete worker accounting is expected for that run.
+- If a crashed worker never sends `Detach`, its local `attempted` count is not aggregated. A shutdown report can therefore show `attempted < accepted` with `snapshot_complete=false` or `shutdown_result=clean_with_worker_crash`; this means the attempted-side worker snapshot is incomplete, not that the Writer accepted impossible records.
+- The Writer itself shuts down cleanly: it drains the queue, finalizes counters, and writes the shutdown report even when one or more workers exited abnormally.
 
 What the Writer cannot do:
 
@@ -371,7 +409,7 @@ What the Writer cannot do:
 
 The benchmark resilience profile contains a `rolling_restart_mixed_shutdown` scenario that exercises this and shows what the summary looks like.
 
-## 17. `mp.ReopenLogFiles` for external rotation
+## 18. `mp.ReopenLogFiles` for external rotation
 
 When an external rotator (`logrotate`, a Windows scheduled task, a manual `mv` + `touch`) renames or deletes the active log file, the Writer's open file descriptor still points at the renamed/deleted inode. The new file is not written.
 
@@ -395,21 +433,21 @@ Constraints:
 
 See [`13_external_rotation_reopen.md`](13_external_rotation_reopen.md) for the full external-rotation scenario.
 
-## 18. Common failure modes
+## 19. Common failure modes
 
 The patterns that show up most often in user reports:
 
 - **Mixing `mp_context`s.** The Writer is configured with a spawn context but workers are created with `multiprocessing.Process(...)` (default context). The IPC queues then come from different contexts and message exchange becomes unreliable. Always reuse one `proc_ctx`.
 - **Missing `if __name__ == "__main__"` on Windows.** Children re-execute the parent setup and try to re-configure the Writer. Symptoms: hanging startup or `RuntimeError: mp.ConfigureLogger() has already been called in this process` from the spawned child.
 - **Calling `mp.GetLogger()` in a worker without attaching.** Raises `RuntimeError`. The fix is to use `GetWorkerInitializer` (Pool/Executor) or call `AttachCurrentProcess` explicitly (`Process`).
-- **Forgetting `Detach` in a `Process` worker.** The atexit hook still runs in the parent, but the worker may not get a chance to send a clean detach. The result is usually fine for short jobs but can leave the run summary marked as not fully clean.
+- **Forgetting `Detach` in a `Process` worker.** The atexit hook still runs in the parent, but the worker may not get a chance to send a clean detach. The result is usually fine for short jobs but can leave the shutdown report marked as not fully clean.
 - **Skipping `process.join()` in the parent.** The parent's `atexit` hook may stop the Writer while worker queues are still being drained. Always `join()` workers before letting the parent exit.
 - **Registering custom levels only in the parent under `spawn`.** Workers fail to attach because the registry hash differs. Register in workers too (module-level import or initializer function).
 - **Setting queue maxsize too small.** `D_LOG_IPC_LOG_QUEUE_MAXSIZE=10` produces a flood of `KnownDropped`. Useful for testing the failure path; not useful for production.
 - **Re-using a single `BootstrapContext` across multiple `mp.ConfigureLogger` calls.** A `BootstrapContext` is tied to one Writer session and one parent process. If the parent restarts, generate a new context.
 - **Adding stdlib `logging.FileHandler` to a worker logger.** This bypasses the Writer and takes ownership of a file the Writer thinks it owns. Do not mix; let the Writer own all sinks.
 
-## 19. Troubleshooting
+## 20. Troubleshooting
 
 | Symptom | Likely cause | Where to look |
 |---|---|---|
@@ -420,14 +458,14 @@ The patterns that show up most often in user reports:
 | `RuntimeError: mp.GetLogger() requires the current process to be attached`. | Worker did not attach. | Use `GetWorkerInitializer` (Pool/Executor) or call `AttachCurrentProcess` (Process). |
 | `RuntimeError` on attach with registry-hash mismatch. | Custom levels registered in parent but not in worker (or vice versa). | Register the same set of custom levels in every process before attach. |
 | Records counted as `KnownDropped` even though throughput looks low. | `D_LOG_IPC_LOG_TIMEOUT` is set too low, or maxsize was tuned down. | Inspect the relevant env variables; restore defaults during normal operation. |
-| Records counted as `KnownRejected` after an external tool ran. | Sink became unavailable (lock, permissions, deleted directory). | Inspect the Writer's stderr warnings for the rejection cause. |
+| Records counted as `KnownRejected` after an external tool ran. | Sink became unavailable (lock, permissions, deleted directory). | Inspect `runtime_warning_path`, fallback warning files, and `GetDeliveryStatus()["writer_reject_breakdown"]`. |
 | Duplicate logs appear. | A worker also added a stdlib `FileHandler` to the same path. | Remove the worker-side handler; let the Writer own the sink. |
 | Logs appear in parent but not workers. | Workers attached to a different Writer session or skipped attach. | Confirm workers receive the same `BootstrapContext` instance the parent created. |
 | Environment overrides have no effect on workers. | The override is read at parent `mp.ConfigureLogger` time, not at worker attach time. | Set environment variables before the parent starts. |
 | `mp.ReopenLogFiles()` raises `ValueError`. | Configured `routing_mode` is not `'none'`. | Reopen is only meaningful with no internal routing; let internal routing handle boundaries instead. |
-| `mp.ReopenLogFiles()` raises `TimeoutError`. | Control plane is saturated or the Writer is unresponsive. | Investigate Writer-side stderr; consider whether the sink is blocking. |
+| `mp.ReopenLogFiles()` raises `TimeoutError`. | Control plane is saturated or the Writer is unresponsive. | Inspect runtime warnings and consider whether the sink is blocking. |
 
-If a symptom is not on this list and `UnexplainedLost` is non-zero in the shutdown summary, that counter is the right starting point: it means the runtime knows it cannot account for some records, and the BENCHMARK.md resilience profile shows how the same scenarios look in controlled tests.
+If a symptom is not on this list and `UnexplainedLost` is non-zero in `GetDeliveryStatus()` or the shutdown report, that counter is the right starting point: it means the runtime knows it cannot account for some records, and the BENCHMARK.md resilience profile shows how the same scenarios look in controlled tests.
 
 ## See also
 

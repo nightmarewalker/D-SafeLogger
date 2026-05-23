@@ -1,4 +1,4 @@
-# D-SafeLogger Basic Design Specification v23j (Capture/Transport/Sink 3-layer Architecture, Formal `dsafelogger.mp` Specification, External Log Rotation Coexistence, Fixed Control Plane/Backpressure Semantics, Vendor-Agnostic Core)
+# D-SafeLogger Basic Design Specification v23k (Capture/Transport/Sink 3-layer Architecture, Formal `dsafelogger.mp` Specification, External Log Rotation Coexistence, Fixed Control Plane/Backpressure Semantics, Vendor-Agnostic Core)
 
 ## 1. Purpose and Position of This Document
 This module is a lightweight, fast, and feature-rich logging platform shared by all projects in the Python ecosystem provided by `D`, including D-Settings, DPySide, and D-MessageRouter.
@@ -2483,3 +2483,15 @@ Pre-publication synchronization includes coverage regeneration, API docs regener
 ### v23j Type Validation CI Addendum
 
 For the 0.2.2 pre-publication quality gate, CI adds type validation for the `py.typed` distribution. Source typing is checked with `mypy src` and `pyright src`, user-perspective smoke typing is checked with `pyright tests/typing_smoke`, and packaged typing is checked from the installed built wheel with `pyright --verifytypes dsafelogger --ignoreexternal` at a 100% completeness threshold. The verifytypes step uses `uv run --no-sync` so the wheel install is not replaced by the editable install before verification. The smoke-test directory is named `tests/typing_smoke/`, not `tests/typing/`, to avoid shadowing the standard-library `typing` module in spawn workers. These additions change only the public quality gate, not runtime behavior; the release-version bump is deferred until release readiness is confirmed.
+
+### v23k Multiprocess Observability Addendum
+
+v23k formalizes `dsafelogger.mp` observability for console-less production environments. `mp.ConfigureLogger()` accepts `runtime_warning_path` and `shutdown_report_path`, so delivery state can be inspected through runtime-warning JSONL and shutdown-report JSON even when stderr is unavailable. `mp.GetDeliveryStatus()` and `mp.DeliveryStatus` expose Writer counters as a public API and a typed runtime snapshot.
+
+Runtime warnings use an independent sink that never routes through the application log pipeline. During normal operation workers send warning payloads to the Writer through a dedicated warning queue, and the Writer appends JSONL. If the warning queue or IPC path is unavailable, the worker writes a local fallback file named `<runtime_warning_path>.<pid>.fallback.jsonl`.
+
+The shutdown report is written by the Writer at stop time through a same-directory temporary file followed by `os.replace()`. On Windows, replacement may fail when the target file is open without delete sharing; in that case the failure is reported through RuntimeWarningSink and stderr, and shutdown still completes.
+
+Delivery accounting exposes `attempted`, `accepted`, `delivered`, `partial_delivered`, `known_rejected`, `known_dropped`, and `unexplained_lost` as the public contract. Detailed counters are separated into `writer_reject_breakdown`, `worker_drop_breakdown`, and `writer_drop_breakdown`; Writer-originated drops are not mixed into worker drops. `partial_delivered` is an independent terminal state, not part of `delivered` or `known_rejected`.
+
+The MP runtime wire protocol assumes Writer and workers come from the same installed package version. DETACH payloads include worker local drop summaries, and ATTACH payloads include pids for later missing-worker investigation in shutdown reports. `diagnose` remains application-record diagnostics, runtime warnings cover runtime/transport failures, and delivery status/report cover accounting snapshots and final reports.

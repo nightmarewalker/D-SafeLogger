@@ -1,7 +1,7 @@
 """Check public design-document readiness.
 
 `plan/` is a private planning area. Public design documents live under
-`docs/design/`, so CI validates that the selected public v23j files are present
+`docs/design/`, so CI validates that the selected public design files are present
 and do not expose private planning paths or stale release-publication wording.
 """
 
@@ -14,13 +14,15 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DESIGN_DIR = REPO_ROOT / "docs" / "design"
 
-REQUIRED_FILES = (
-    "D_SafeLogger_Specification_v23j_full.md",
-    "D_SafeLogger_Specification_v23j_full_en.md",
-    "D-SafeLogger_DetailedDesign_v23j.md",
-    "D-SafeLogger_TestDesign_v23j.md",
-    "D-SafeLogger_v23j_WhitePaper.md",
-    "D-SafeLogger_v23j_WhitePaper_en.md",
+DEFAULT_DESIGN_VERSION = "v23k"
+
+REQUIRED_FILE_TEMPLATES = (
+    "D_SafeLogger_Specification_{version}_full.md",
+    "D_SafeLogger_Specification_{version}_full_en.md",
+    "D-SafeLogger_DetailedDesign_{version}.md",
+    "D-SafeLogger_TestDesign_{version}.md",
+    "D-SafeLogger_{version}_WhitePaper.md",
+    "D-SafeLogger_{version}_WhitePaper_en.md",
 )
 
 PRIVATE_PATH_PATTERNS = (
@@ -91,9 +93,16 @@ FORBIDDEN_PUBLIC_PATTERNS = (
 )
 
 
-def _problems() -> list[str]:
+def _required_files(version: str) -> tuple[str, ...]:
+    return tuple(
+        template.format(version=version)
+        for template in REQUIRED_FILE_TEMPLATES
+    )
+
+
+def _problems(version: str) -> list[str]:
     problems: list[str] = []
-    for filename in REQUIRED_FILES:
+    for filename in _required_files(version):
         path = DESIGN_DIR / filename
         if not path.exists():
             problems.append(f"missing: docs/design/{filename}")
@@ -110,8 +119,8 @@ def _problems() -> list[str]:
     return problems
 
 
-def check() -> int:
-    problems = _problems()
+def check(version: str = DEFAULT_DESIGN_VERSION) -> int:
+    problems = _problems(version)
     if problems:
         for problem in problems:
             print(problem)
@@ -122,8 +131,13 @@ def check() -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.parse_args()
-    return check()
+    parser.add_argument(
+        "--version",
+        default=DEFAULT_DESIGN_VERSION,
+        help=f"design document version to validate (default: {DEFAULT_DESIGN_VERSION})",
+    )
+    args = parser.parse_args()
+    return check(args.version)
 
 
 if __name__ == "__main__":

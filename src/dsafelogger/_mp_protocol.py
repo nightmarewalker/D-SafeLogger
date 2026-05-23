@@ -65,7 +65,7 @@ class LogEvent(TypedDict):
 class ControlRequest(TypedDict):
     request_id: str
     client_id: str
-    command: Literal['ATTACH', 'DETACH', 'REOPEN', 'STOP', 'STATUS']
+    command: Literal['BOOTSTRAP_READY', 'ATTACH', 'DETACH', 'REOPEN', 'STOP', 'STATUS']
     reply_to: Any  # multiprocessing.Connection — send end of a Pipe
     payload: dict[str, Any]
 
@@ -94,6 +94,7 @@ class BootstrapContext:
     writer_flush_batch: int                 # v23g: flush every N messages (1 = per-message)
     ipc_log_timeout: float
     overflow_policy: Literal['drop']
+    runtime_warning_queue: Any | None = None
 
 
 def _serialize_record(record: logging.LogRecord, ds_route: str) -> LogEvent:

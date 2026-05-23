@@ -31,6 +31,12 @@ v23h: counters revised for spec §12.3 alignment.
   - idle / shutdown flush logic only runs when `writer_flush_batch > 1`.
   - `__init__` validates `ctx.writer_flush_batch >= 1`.
 
+## Functions
+
+### `_now_iso() -> 'str'`
+
+### `_safe_counter(value: 'Any') -> 'int'`
+
 ## Classes
 
 ### `WriterRuntime(ctx: 'BootstrapContext', sink_groups: 'dict[str, list[logging.Handler]]') -> 'None'`

@@ -33,3 +33,33 @@ def smoke_multiprocess() -> None:
     ctx = mp.ConfigureLogger()
     init_fn, init_args = mp.GetWorkerInitializer(ctx)
     _ = (init_fn, init_args)
+
+
+def smoke_delivery_status() -> None:
+    from dsafelogger import mp
+
+    status: mp.DeliveryStatus = mp.GetDeliveryStatus()
+    attempted: int = status["attempted"]
+    accepted: int = status["accepted"]
+    delivered: int = status["delivered"]
+    partial_delivered: int = status["partial_delivered"]
+    known_rejected: int = status["known_rejected"]
+    known_dropped: int = status["known_dropped"]
+    unexplained_lost: int = status["unexplained_lost"]
+    writer_rejects: dict[str, int] = status["writer_reject_breakdown"]
+    worker_drops: dict[str, int] = status["worker_drop_breakdown"]
+    writer_drops: dict[str, int] = status["writer_drop_breakdown"]
+    complete: bool = status["snapshot_complete"]
+    _ = (
+        attempted,
+        accepted,
+        delivered,
+        partial_delivered,
+        known_rejected,
+        known_dropped,
+        unexplained_lost,
+        writer_rejects,
+        worker_drops,
+        writer_drops,
+        complete,
+    )

@@ -69,6 +69,7 @@ RESILIENCE_SCENARIOS = [
     "rolling_restart_mixed_shutdown",
     "burst_backpressure",
     "sink_temporarily_unavailable",
+    "ipc_forced_disconnect",
 ]
 # For overload_profile: force messages >> queue to trigger D-SafeLogger drops.
 OVERLOAD_QUEUE_DIVISOR = 6
@@ -724,9 +725,21 @@ def _child_dsafelogger_resilience(
     accepted = 0
     timeout_drop = 0
     overload_shed = 0
+    fallback_warning_injected = False
     start_event.wait()
     dsmp.AttachCurrentProcess(bootstrap_ctx)
     try:
+        if scenario_name == "ipc_forced_disconnect":
+            state = _mp_attach_mod._mp_runtime_state
+            if state is not None:
+                object.__setattr__(state.root_transport._ctx, "runtime_warning_queue", None)
+                state.root_transport._emit_runtime_warning(
+                    event="transport_closed_drop",
+                    classification="KnownDropped",
+                    reason="benchmark forced warning IPC disconnect",
+                    context={"worker_index": worker_index, "scenario": scenario_name},
+                )
+                fallback_warning_injected = True
         logger = dsmp.GetLogger(logger_name)
         limit = count // 2 if exit_mode == "os_exit" else count
         for seq in range(limit):
@@ -755,6 +768,7 @@ def _child_dsafelogger_resilience(
             "accepted": accepted,
             "timeout_drop": timeout_drop,
             "overload_shed": overload_shed,
+            "fallback_warning_injected": fallback_warning_injected,
         })
         if exit_mode == "os_exit":
             os._exit(2)
@@ -1039,49 +1053,81 @@ def _build_resilience_report(
     writer_status: dict[str, Any],
     aggregator_failures: int = 0,
 ) -> ResilienceReport:
+    def _sum_counter_map(value: object) -> int:
+        if not isinstance(value, dict):
+            return 0
+        total = 0
+        for item in value.values():
+            try:
+                total += int(item or 0)
+            except (TypeError, ValueError):
+                continue
+        return total
+
+    def _status_int(key: str, default: int) -> int:
+        if key not in writer_status:
+            return default
+        try:
+            return int(writer_status[key] or 0)
+        except (TypeError, ValueError):
+            return default
+
     attempted = sum(int(item.get("attempted") or 0) for item in worker_results)
     accepted = sum(int(item.get("accepted") or 0) for item in worker_results)
     timeout_drop = sum(int(item.get("timeout_drop") or 0) for item in worker_results)
     overload_shed = sum(int(item.get("overload_shed") or 0) for item in worker_results)
-
-    writer_rejected_keys = [
-        "writer_route_reject",
-        "writer_reconstruct_reject",
-        "writer_close_marker_reject",
-        "writer_sink_reject",
-        "writer_policy_reject",
-    ]
-    writer_rejected = sum(int(writer_status.get(key) or 0) for key in writer_rejected_keys)
-    partial = int(writer_status.get("writer_partial_delivered") or 0)
-    drain_loss = int(writer_status.get("writer_drain_deadline_loss") or 0)
+    worker_known_dropped = timeout_drop + overload_shed
+    writer_known_dropped = 0
 
     if backend == "D-SafeLogger":
-        known_dropped = timeout_drop + overload_shed + drain_loss
-        known_rejected = writer_rejected + partial
+        attempted = _status_int("attempted", attempted)
+        accepted = _status_int("accepted", accepted)
+        delivered_for_accounting = _status_int("delivered", delivered_count)
+        partial = _status_int("partial_delivered", _status_int("writer_partial_delivered", 0))
+        worker_known_dropped = _sum_counter_map(writer_status.get("worker_drop_breakdown"))
+        writer_known_dropped = _sum_counter_map(writer_status.get("writer_drop_breakdown"))
+        known_dropped = _status_int("known_dropped", worker_known_dropped + writer_known_dropped)
+        known_rejected = _status_int(
+            "known_rejected",
+            _sum_counter_map(writer_status.get("writer_reject_breakdown")),
+        )
         observability = [
             "attempted",
             "accepted",
             "delivered",
-            "transport_timeout_drop",
-            "transport_overload_shed",
-            "writer_reject_counters",
-            "writer_partial_delivered",
-            "writer_drain_deadline_loss",
+            "partial_delivered",
+            "known_rejected",
+            "known_dropped",
+            "unexplained_lost",
+            "writer_reject_breakdown",
+            "worker_drop_breakdown",
+            "writer_drop_breakdown",
         ]
     else:
         known_dropped = None
         known_rejected = aggregator_failures if scenario_name == "sink_temporarily_unavailable" else None
         observability = ["attempted", "delivered"]
         accepted = None
+        delivered_for_accounting = delivered_count
+        partial = 0
 
     if known_dropped is None or known_rejected is None or accepted is None:
         unexplained = None
         shutdown_result = "unknown"
     else:
-        unexplained = max(0, accepted - delivered_count - known_dropped - known_rejected)
-        shutdown_result = "clean" if unexplained == 0 else "degraded"
+        unexplained = _status_int(
+            "unexplained_lost",
+            max(0, accepted - delivered_for_accounting - partial - known_rejected - writer_known_dropped),
+        )
+        bench_shutdown_verdict = "clean" if unexplained == 0 else "degraded"
         if scenario_name == "rolling_restart_mixed_shutdown" and any(item.get("planned_exit_mode") != "normal" for item in worker_results):
-            shutdown_result = "degraded" if unexplained or known_dropped or known_rejected else "clean_with_worker_crash"
+            bench_shutdown_verdict = "degraded" if unexplained or known_dropped or known_rejected else "clean_with_worker_crash"
+        shutdown_result = bench_shutdown_verdict
+        if backend == "D-SafeLogger":
+            shutdown_report_result = writer_status.get("shutdown_report_result")
+            if isinstance(shutdown_report_result, str) and shutdown_report_result:
+                writer_status["bench_shutdown_verdict"] = bench_shutdown_verdict
+                shutdown_result = shutdown_report_result
 
     exit_summary: dict[str, int] = {}
     for item in worker_results:
@@ -1155,6 +1201,8 @@ def _run_resilience_backend_worker(args: argparse.Namespace) -> RawRunRecord:
 
             queue_size = None
             ipc_timeout = 0.5
+            runtime_warning_path = scratch_dir / "runtime_warning.jsonl"
+            shutdown_report_path = scratch_dir / "shutdown_report.json"
             if scenario_name == "burst_backpressure":
                 queue_size = max(8, min(64, args.messages // 16))
                 ipc_timeout = 0.001
@@ -1169,6 +1217,8 @@ def _run_resilience_backend_worker(args: argparse.Namespace) -> RawRunRecord:
                 ipc_log_queue_maxsize=queue_size,
                 ipc_client_queue_maxsize=queue_size,
                 ipc_log_timeout=ipc_timeout,
+                runtime_warning_path=str(runtime_warning_path),
+                shutdown_report_path=str(shutdown_report_path),
             )
             runtime = dsmp_mod._mp_writer_runtime
             if scenario_name == "sink_temporarily_unavailable" and runtime is not None:
@@ -1191,12 +1241,38 @@ def _run_resilience_backend_worker(args: argparse.Namespace) -> RawRunRecord:
                 repeat_index=args.repeat_index,
                 resilience_scenario=scenario_name,
             )
-            if runtime is not None:
-                writer_status = runtime._cmd_status("bench-status", "bench")["result"]
+            try:
+                writer_status = dict(dsmp.GetDeliveryStatus())
+            except Exception as exc:
+                writer_status = {"delivery_status_error": repr(exc)}
+            writer_status["runtime_warning_path"] = str(runtime_warning_path)
+            writer_status["shutdown_report_path"] = str(shutdown_report_path)
             try:
                 dsmp._mp_shutdown()
             except Exception:
                 pass
+            writer_status["runtime_warning_exists"] = runtime_warning_path.exists()
+            writer_status["shutdown_report_exists"] = shutdown_report_path.exists()
+            fallback_files = sorted(
+                str(path)
+                for path in scratch_dir.glob(f"{runtime_warning_path.name}.*.fallback.jsonl")
+            )
+            writer_status["runtime_warning_fallback_files"] = fallback_files
+            writer_status["runtime_warning_fallback_file_count"] = len(fallback_files)
+            if shutdown_report_path.exists():
+                try:
+                    shutdown_report = json.loads(shutdown_report_path.read_text(encoding="utf-8"))
+                    writer_status["shutdown_report_schema_version"] = shutdown_report.get("schema_version")
+                    writer_status["shutdown_report_result"] = shutdown_report.get("shutdown_result")
+                    writer_status["shutdown_report_worker_crash_observed"] = shutdown_report.get("worker_crash_observed")
+                    writer_status["shutdown_report_missing_detach_clients"] = shutdown_report.get("missing_detach_clients")
+                    writer_status["shutdown_report_missing_detach_client_ids"] = shutdown_report.get("missing_detach_client_ids")
+                    writer_status["shutdown_report_missing_detach_pids"] = shutdown_report.get("missing_detach_pids")
+                    writer_status["shutdown_report_warning_queue_drain_incomplete"] = shutdown_report.get(
+                        "warning_queue_drain_incomplete"
+                    )
+                except (OSError, json.JSONDecodeError) as exc:
+                    writer_status["shutdown_report_error"] = repr(exc)
         elif args.backend == "stdlib logging":
             queue_obj = ctx.Queue(maxsize=max(8, min(64, args.messages // 16)) if scenario_name == "burst_backpressure" else 0)
             aggregator = ResilienceAggregator(

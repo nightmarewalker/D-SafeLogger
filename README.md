@@ -108,7 +108,7 @@ D-SafeLogger avoids that dependency by choosing the destination at write time. I
 | Record and context safety | Context is snapshotted on the producer side at hand-off; diagnostics and Writer-side formatting use the sensitive-keyword set established at configure time. |
 | Operational control | Runtime overrides are intentionally explicit and operator-owned. Log levels, routing, hashing, and timeout behavior can be changed without rebuilding, while diagnostic local-variable expansion is limited to environment-variable opt-in and cannot be enabled by an unowned INI file. |
 | Concurrency and multiprocess safety | Cross-thread and cross-process logging paths use bounded queues, explicit timeouts, rejection/drop paths, and shutdown drain limits. The design favors hard ceilings over indefinite waiting. |
-| Delivery visibility | Abnormal delivery outcomes remain visible as counters and shutdown summaries. Even `UnexplainedLost` is preserved as an explicit state, so abnormal runs do not collapse into “the file is just shorter than expected.” |
+| Delivery visibility | Abnormal delivery outcomes remain visible through `mp.GetDeliveryStatus()`, runtime warning JSON Lines, and shutdown report JSON. Even `UnexplainedLost` is preserved as an explicit state, so abnormal runs do not collapse into “the file is just shorter than expected.” |
 
 Append-only routing avoids external rename/truncate of active log files. It does not make every destination filesystem equally safe. NFS, SMB/CIFS, FUSE mounts, cloud-synced folders, container bind mounts, and in-memory filesystems can have different rename, unlink, cache, durability, or lifetime semantics. For audit-oriented deployments, prefer writing active logs to a durable local filesystem and transferring closed routed files to archive or network storage.
 
@@ -157,21 +157,21 @@ Notes:
 - **※9** loguru's `enqueue=True` provides queued, multiprocessing-safe logging, but it is not a parent-side Writer ownership model and does not expose D-SafeLogger-style delivery-state accounting.
 - **※10** stdlib logging can be assembled into a listener/queue architecture, but this is not a packaged parent-side Writer API.
 
-**Delivery-state accounting** refers to per-record classification (`KnownRejected`, `KnownDropped`, `UnexplainedLost`) exposed through counters and shutdown summaries. See [`examples/12_multiprocess_logging.md`](examples/12_multiprocess_logging.md) and [BENCHMARK.md](BENCHMARK.md).
+**Delivery-state accounting** refers to per-record classification (`KnownRejected`, `KnownDropped`, `UnexplainedLost`, plus `partial_delivered`) exposed through `mp.GetDeliveryStatus()`, runtime warning JSON Lines, and shutdown report JSON. See [`examples/12_multiprocess_logging.md`](examples/12_multiprocess_logging.md), [`docs/design/v23k_supplements/delivery_status_schema.md`](docs/design/v23k_supplements/delivery_status_schema.md), and [BENCHMARK.md](BENCHMARK.md).
 
 ## Multiprocess Logging
 
 `dsafelogger.mp` is for applications where multiple worker processes need to send logs to shared destinations without each worker independently opening the same files.
 
-In this mode, a parent-side Writer owns the file sinks. Workers attach to the Writer and submit log records through IPC. This centralizes file ownership and exposes delivery-state counters such as accepted, delivered, rejected, dropped, and unexplained-lost.
+In this mode, a parent-side Writer owns the file sinks. Workers attach to the Writer and submit log records through IPC. This centralizes file ownership and exposes delivery-state counters such as attempted, accepted, delivered, partial-delivered, known-rejected, known-dropped, and unexplained-lost.
 
 The public API is designed for three common worker patterns: `multiprocessing.Process`, `multiprocessing.Pool`, and `concurrent.futures.ProcessPoolExecutor`. The same Writer session can be bootstrapped into each pattern through explicit attach calls or the `GetWorkerInitializer()` helper used by pools and executors.
 
-The Writer shutdown path is bounded: it attempts to drain and join within a timeout, emits a visible warning if drain is incomplete, and avoids hanging the host process indefinitely.
+The Writer shutdown path is bounded: it attempts to drain and join within a timeout, records runtime warnings when configured, writes a shutdown report when configured, and avoids hanging the host process indefinitely.
 
 For setup code, the `multiprocessing` context rules, pool initializer, `ProcessPoolExecutor` integration, Windows spawn caveats, custom log levels, attach/detach lifecycle, environment-variable knobs, and shutdown handling, see [`examples/12_multiprocess_logging.md`](examples/12_multiprocess_logging.md).
 
-Public API in `dsafelogger.mp`: `ConfigureLogger`, `AttachCurrentProcess`, `DetachCurrentProcess`, `GetLogger`, `GetWorkerInitializer`, `ReopenLogFiles`.
+Public API in `dsafelogger.mp`: `ConfigureLogger`, `AttachCurrentProcess`, `DetachCurrentProcess`, `GetLogger`, `GetWorkerInitializer`, `GetDeliveryStatus`, `DeliveryStatus`, `ReopenLogFiles`.
 
 ## Configuration
 
@@ -225,7 +225,7 @@ Suggested reading paths:
 
 D-SafeLogger is competitive in the selected single-process async benchmark runs. In multiprocess benchmarks, raw throughput is not the differentiator; parent-side file output and classified delivery-state accounting are.
 
-The benchmark suite also includes multiprocess resilience profiles, such as sink-unavailable, burst backpressure, worker crash, mixed worker behavior, and shutdown behavior. These runs are not throughput claims; they check whether attempted records can be accounted for as delivered, known-rejected, known-dropped, or unexplained-lost.
+The benchmark suite also includes multiprocess resilience profiles, such as sink-unavailable, burst backpressure, worker crash, warning-IPC fallback, mixed worker behavior, and shutdown behavior. These runs are not throughput claims; they check whether attempted records can be accounted for as delivered, partial-delivered, known-rejected, known-dropped, or unexplained-lost.
 
 See [BENCHMARK.md](BENCHMARK.md) for the selected runs, methodology, and the explicit "what to claim / what not to claim" boundaries, and [`benchmarks/summary/`](benchmarks/summary/) for the published summaries.
 
@@ -253,8 +253,8 @@ For vulnerability reporting, see [SECURITY.md](SECURITY.md).
 
 For deeper architectural rationale and specification details, see:
 
-- [Architecture Analysis White Paper](docs/design/D-SafeLogger_v23j_WhitePaper_en.md)
-- [Basic Design Specification](docs/design/D_SafeLogger_Specification_v23j_full_en.md)
+- [Architecture Analysis White Paper](docs/design/D-SafeLogger_v23k_WhitePaper_en.md)
+- [Basic Design Specification](docs/design/D_SafeLogger_Specification_v23k_full_en.md)
 - [API Reference](docs/api/index.md)
 
 Japanese design documents are also available under [`docs/design/`](docs/design/).

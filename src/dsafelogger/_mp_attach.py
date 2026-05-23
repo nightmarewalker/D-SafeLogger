@@ -26,6 +26,10 @@ from dsafelogger._mp_protocol import (
     LogEvent,
     _serialize_record,
 )
+from dsafelogger._runtime_warning import (
+    RuntimeWarningSink,
+    make_runtime_warning_payload,
+)
 
 # ── Process-local state ──────────────────────────────────────────────────────
 
@@ -66,6 +70,7 @@ class MPClientTransport:
             queue.Queue(maxsize=ctx.ipc_client_queue_maxsize) if is_async else None
         )
         self._pump_thread: threading.Thread | None = None
+        self._attempted: int = 0
         self._drop_counter: int = 0
         # cause-specific drop counters (v23c)
         self._overload_shed: int = 0
@@ -129,6 +134,12 @@ class MPClientTransport:
             )
             return True
         except (queue.Full, BrokenPipeError, EOFError, OSError, ValueError) as exc:
+            self._emit_runtime_warning(
+                event='close_marker_failed',
+                classification='KnownDropped',
+                reason=f'close_marker_failed for client {client_id!r}: {exc!r}',
+                context={'client_id': client_id},
+            )
             print(
                 f'[D-SafeLogger] close_marker_failed for client {client_id!r}: {exc!r}',
                 file=sys.stderr,
@@ -141,6 +152,7 @@ class MPClientTransport:
     # ── Internal ──────────────────────────────────────────────────────────
 
     def _emit_record(self, record: logging.LogRecord) -> None:
+        self._attempted += 1
         if self._closed or self._stopping:
             self._drop('transport closed')
             return
@@ -188,11 +200,73 @@ class MPClientTransport:
         elif reason == 'log plane timeout/full':
             self._timeout_drop += 1
         if self._drop_counter == 1 or self._drop_counter % 100 == 0:
+            self._emit_runtime_warning(
+                event=self._warning_event_for_drop_reason(reason),
+                classification='KnownDropped',
+                reason=f'multiprocess log dropped ({reason})',
+                counter_name=self._warning_counter_for_drop_reason(reason),
+                counter_value=self._drop_counter,
+            )
             print(
                 f'[D-SafeLogger] multiprocess log dropped '
                 f'({reason}, count={self._drop_counter})',
                 file=sys.stderr,
             )
+
+    def _emit_runtime_warning(
+        self,
+        *,
+        event: str,
+        classification: str | None = None,
+        reason: str | None = None,
+        counter_name: str | None = None,
+        counter_value: int | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> None:
+        path = self._ctx.resolved_config.get('runtime_warning_path')
+        if not isinstance(path, str) or not path:
+            return
+        payload = make_runtime_warning_payload(
+            component='worker',
+            event=event,
+            classification=classification,
+            reason=reason,
+            counter_name=counter_name,
+            counter_value=counter_value,
+            context=context,
+        )
+        warning_queue = self._ctx.runtime_warning_queue
+        if warning_queue is not None:
+            try:
+                warning_queue.put_nowait(payload)
+                return
+            except (queue.Full, BrokenPipeError, EOFError, OSError, ValueError):
+                pass
+        RuntimeWarningSink.write_fallback(path, payload)
+
+    @staticmethod
+    def _warning_event_for_drop_reason(reason: str) -> str:
+        if reason == 'process-local async queue full':
+            return 'overload_shed'
+        if reason == 'transport closed':
+            return 'transport_closed_drop'
+        if reason == 'writer unavailable':
+            return 'writer_unavailable_drop'
+        if reason == 'log plane timeout/full':
+            return 'timeout_drop'
+        return 'drop'
+
+    @staticmethod
+    def _warning_counter_for_drop_reason(reason: str) -> str:
+        if reason == 'process-local async queue full':
+            return 'worker_overload_shed'
+        if reason == 'transport closed':
+            return 'worker_transport_closed_drop'
+        if reason == 'writer unavailable':
+            return 'worker_writer_unavailable_drop'
+        if reason == 'log plane timeout/full':
+            return 'worker_timeout_drop'
+        return 'worker_drop_counter'
 
     class _MPProxyHandler(logging.Handler):
         """Thin handler that delegates to MPClientTransport._emit_record."""
@@ -282,6 +356,20 @@ def _cleanup_process_local_state(state: MPProcessState) -> None:
         transport.stop()
 
 
+def _build_local_drop_summary(state: MPProcessState) -> dict[str, int]:
+    """Aggregate root and module transport counters for DETACH."""
+    transports = [state.root_transport, *state.module_transports.values()]
+    return {
+        'attempted': sum(t._attempted for t in transports),
+        'drop_counter': sum(t._drop_counter for t in transports),
+        'overload_shed': sum(t._overload_shed for t in transports),
+        'transport_closed_drop': sum(t._transport_closed_drop for t in transports),
+        'writer_unavailable_drop': sum(t._writer_unavailable_drop for t in transports),
+        'timeout_drop': sum(t._timeout_drop for t in transports),
+        'module_transport_count': len(state.module_transports),
+    }
+
+
 def _do_attach(ctx: BootstrapContext) -> None:
     """Attach the current process to an existing Writer runtime (3-phase).
 
@@ -323,6 +411,7 @@ def _do_attach(ctx: BootstrapContext) -> None:
             session_id=ctx.session_id,
             protocol_version=ctx.protocol_version,
             registry_hash=ctx.registry_hash,
+            pid=os.getpid(),
         )
 
     # ── Phase 2: control plane I/O (outside lock) ─────────────────────────
@@ -434,6 +523,15 @@ def _do_detach(*, best_effort: bool = False) -> None:
         if drain_ok:
             close_marker_sent = state.root_transport.send_close_marker(state.client_id)
         else:
+            state.root_transport._emit_runtime_warning(
+                event='drain_deadline_loss',
+                classification='KnownDropped',
+                reason=(
+                    f'local queue drain failed for client {state.client_id!r}; '
+                    'skipping close marker'
+                ),
+                context={'client_id': state.client_id},
+            )
             print(
                 f'[D-SafeLogger] local queue drain failed for client '
                 f'{state.client_id!r}; skipping close marker',
@@ -447,6 +545,7 @@ def _do_detach(*, best_effort: bool = False) -> None:
         req = _make_detach_request(
             state.client_id, send_conn,
             close_marker_failed=not close_marker_sent,
+            local_drop_summary=_build_local_drop_summary(state),
         )
         try:
             _send_control_request(state.ctx.control_queue, req)

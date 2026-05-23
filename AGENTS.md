@@ -78,16 +78,16 @@ uv sync --group dev
 uv run pytest tests -v
 ```
 
-Current v23j local validation on Python 3.14.3 / Windows:
+Current v23k local validation on Python 3.14.3 / Windows:
 
 ```text
-658 passed, 3 skipped
+714 passed, 3 skipped
 ```
 
 Latest collection-only validation:
 
 ```text
-661 tests collected
+717 tests collected
 ```
 
 Latest coverage validation: terminal total `87%`, XML line-rate `88.97%`, XML branch-rate `81.46%` on Python 3.14.3 / Windows.
@@ -299,16 +299,16 @@ uv sync --group dev
 uv run pytest tests -v
 ```
 
-現行 v23j の local validation（Python 3.14.3 / Windows）:
+現行 v23k の local validation（Python 3.14.3 / Windows）:
 
 ```text
-658 passed, 3 skipped
+714 passed, 3 skipped
 ```
 
 最新の collect-only validation:
 
 ```text
-661 tests collected
+717 tests collected
 ```
 
 最新 coverage validation: terminal total `87%`, XML line-rate `88.97%`, XML branch-rate `81.46%`（Python 3.14.3 / Windows）。

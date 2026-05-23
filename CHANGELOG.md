@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Multiprocess observability artifacts: `mp.GetDeliveryStatus()` / `DeliveryStatus`, `runtime_warning_path` JSON Lines output with per-pid worker fallback files, and `shutdown_report_path` JSON shutdown reports.
+- Tests for runtime warning output, shutdown report generation, public delivery-status snapshots, writer/worker accounting invariants, and runtime-vs-shutdown missing-detach semantics.
+- v23k public design documents and supplements for delivery status schema, runtime warning design, and multiprocess observability test coverage.
+
+### Changed
+- Multiprocess resilience benchmark summaries now use the public `mp.GetDeliveryStatus()` schema, keep `partial_delivered` separate from `known_rejected`, include writer/worker drop/reject breakdowns, and record runtime warning fallback files plus shutdown-report crash fields.
+- Public multiprocess docs now describe console-less observability through status snapshots, runtime warning JSON Lines, and shutdown report JSON instead of relying on stderr-only guidance.
+
 ## [0.2.2] - 2026-05-21
 
 ### Added

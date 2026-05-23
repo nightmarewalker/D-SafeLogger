@@ -25,6 +25,18 @@ SUMMARY_OUTPUTS = {
     "multiprocess_overload": ("multiprocess_overload.md", "overload_profile"),
     "multiprocess_resilience": ("multiprocess_resilience.md", "resilience_profile"),
 }
+REQUIRED_RESILIENCE_OBSERVABILITY_FIELDS = {
+    "attempted",
+    "accepted",
+    "delivered",
+    "partial_delivered",
+    "known_rejected",
+    "known_dropped",
+    "unexplained_lost",
+    "writer_reject_breakdown",
+    "worker_drop_breakdown",
+    "writer_drop_breakdown",
+}
 
 def _load_json(path: Path) -> dict[str, Any] | None:
     try:
@@ -403,6 +415,36 @@ def _render_resilience_profile_tables(summary: dict[str, Any]) -> list[str]:
     return lines
 
 
+def _validate_resilience_observability_schema(summary: dict[str, Any], summary_path: Path) -> None:
+    raw_runs = summary.get("raw_runs", [])
+    ds_runs = [
+        raw for raw in raw_runs
+        if raw.get("backend") == "D-SafeLogger" and raw.get("status") == "ok"
+    ]
+    if not ds_runs:
+        raise ValueError(
+            f"selected resilience session has no successful D-SafeLogger raw runs: {summary_path}"
+        )
+    stale: list[str] = []
+    for raw in ds_runs:
+        fields = set((raw.get("resilience") or {}).get("observability_fields_available") or [])
+        missing = REQUIRED_RESILIENCE_OBSERVABILITY_FIELDS - fields
+        if missing:
+            label = "/".join(
+                str(raw.get(key, "?"))
+                for key in ("python_label", "gil_label", "backend")
+            )
+            scenario = (raw.get("resilience") or {}).get("scenario", "?")
+            stale.append(f"{label}/{scenario}: missing {', '.join(sorted(missing))}")
+    if stale:
+        details = "; ".join(stale[:3])
+        if len(stale) > 3:
+            details += f"; ... {len(stale) - 3} more"
+        raise ValueError(
+            f"selected resilience session does not expose v23k observability fields: {summary_path} ({details})"
+        )
+
+
 def _render_compare_section(
     repo_root: Path,
     profile: str,
@@ -581,6 +623,8 @@ def _render_selected_summary(repo_root: Path, key: str, session: str, doc_path: 
             raise ValueError(
                 f"manifest key {key!r} expects {profile!r}, got {actual_profile!r} from {summary_path}"
             )
+        if key == "multiprocess_resilience":
+            _validate_resilience_observability_schema(summary, summary_path)
         lines = _render_compare_section(repo_root, profile, summary_path, summary, doc_path)
     if lines:
         lines[0] = _summary_heading(key, profile)
@@ -635,12 +679,13 @@ def write_benchmark_summaries(repo_root: Path, *, check: bool = False) -> list[P
     rendered = render_benchmark_summaries(repo_root)
     changed: list[Path] = []
     for path, content in rendered.items():
-        old = path.read_text(encoding="utf-8") if path.exists() else None
-        if old != content:
+        rendered_bytes = content.encode("utf-8")
+        old = path.read_bytes() if path.exists() else None
+        if old != rendered_bytes:
             changed.append(path)
             if not check:
                 path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(content, encoding="utf-8")
+                path.write_bytes(rendered_bytes)
     if check and changed:
         rels = ", ".join(_rel(repo_root, path) for path in changed)
         raise RuntimeError(f"benchmark summaries are out of date: {rels}")

@@ -5,6 +5,7 @@ Public API:
     AttachCurrentProcess  - Attach a worker process to an existing Writer runtime
     GetLogger             - Get a DSafeLogger instance (requires prior attach)
     GetWorkerInitializer  - Return (init_fn, init_args) for Pool/Executor initializer
+    GetDeliveryStatus     - Return current Writer delivery accounting snapshot
     ReopenLogFiles        - Signal Writer to reopen file sinks after external log rotation
 """
 from __future__ import annotations
@@ -22,7 +23,7 @@ import threading
 import uuid
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, TypedDict, cast
 
 from dsafelogger import _mp_attach
 from dsafelogger._constants import (
@@ -55,6 +56,7 @@ from dsafelogger._mp_control import (
     _resolve_mp_context,
     _make_pipe_with_context,
     _make_reopen_request,
+    _make_status_request,
     _raise_for_failed_ack,
     _send_control_request,
     _wait_control_ack,
@@ -72,8 +74,38 @@ __all__ = [
     'DetachCurrentProcess',
     'GetLogger',
     'GetWorkerInitializer',
+    'GetDeliveryStatus',
+    'DeliveryStatus',
     'ReopenLogFiles',
 ]
+
+
+class DeliveryStatus(TypedDict):
+    """Runtime snapshot of multiprocess delivery accounting counters.
+
+    `partial_delivered` is a terminal state separate from `delivered` and
+    `known_rejected`. Runtime STATUS snapshots report
+    `missing_detach_clients=0`; crash classification is finalized in the
+    shutdown report when `shutdown_report_path` is configured.
+    """
+
+    schema_version: int
+    session_id: str
+    writer_pid: int
+    active_clients: int
+    attempted: int
+    accepted: int
+    delivered: int
+    partial_delivered: int
+    known_rejected: int
+    known_dropped: int
+    unexplained_lost: int
+    writer_reject_breakdown: dict[str, int]
+    worker_drop_breakdown: dict[str, int]
+    writer_drop_breakdown: dict[str, int]
+    snapshot_complete: bool
+    missing_detach_clients: int
+    stop_requested: bool
 
 # ── Process-local Writer state ────────────────────────────────────────────────
 
@@ -358,12 +390,23 @@ def ConfigureLogger(
     ipc_log_queue_maxsize: int | None = None,
     ipc_client_queue_maxsize: int | None = None,
     writer_flush_batch: int | None = None,
+    runtime_warning_path: str | None = None,
+    shutdown_report_path: str | None = None,
 ) -> BootstrapContext:
     """Initialize D-SafeLogger Writer runtime for multiprocess use.
 
     Starts a Writer runtime (background threads in the calling process) and
     attaches the calling process to it. Returns a picklable BootstrapContext
     that worker processes pass to AttachCurrentProcess().
+
+    Args:
+        runtime_warning_path: Optional JSON Lines file for runtime warnings.
+            Worker processes that cannot reach the Writer warning IPC path
+            write per-pid fallback files named
+            ``<runtime_warning_path>.<pid>.fallback.jsonl``.
+        shutdown_report_path: Optional JSON file written atomically by the
+            Writer during shutdown. It contains the final delivery accounting
+            snapshot and worker-crash/missing-detach fields.
 
     Returns:
         BootstrapContext — opaque, picklable context for worker distribution.
@@ -432,6 +475,29 @@ def ConfigureLogger(
 
         if max_lines < 0:
             raise ValueError(f'max_lines must be >= 0, got {max_lines}')
+
+        resolved_runtime_warning_path: str | None = None
+        if runtime_warning_path is not None:
+            warning_path = Path(runtime_warning_path).expanduser()
+            if not warning_path.is_absolute():
+                warning_path = warning_path.resolve()
+            if not warning_path.parent.exists():
+                raise ValueError(
+                    'runtime_warning_path parent directory does not exist: '
+                    f'{warning_path.parent}'
+                )
+            resolved_runtime_warning_path = str(warning_path)
+        resolved_shutdown_report_path: str | None = None
+        if shutdown_report_path is not None:
+            report_path = Path(shutdown_report_path).expanduser()
+            if not report_path.is_absolute():
+                report_path = report_path.resolve()
+            if not report_path.parent.exists():
+                raise ValueError(
+                    'shutdown_report_path parent directory does not exist: '
+                    f'{report_path.parent}'
+                )
+            resolved_shutdown_report_path = str(report_path)
 
         _validate_routing_thresholds(
             routing_mode, max_bytes=max_bytes, max_lines=max_lines,
@@ -775,6 +841,11 @@ def ConfigureLogger(
         ipc_mp_ctx = _resolve_mp_context(mp_context)
         log_queue = _create_log_queue(resolved_log_queue_maxsize, ipc_mp_ctx)
         control_queue = ipc_mp_ctx.Queue(maxsize=_CONTROL_QUEUE_MAXSIZE)
+        runtime_warning_queue = (
+            ipc_mp_ctx.Queue(maxsize=_CONTROL_QUEUE_MAXSIZE)
+            if resolved_runtime_warning_path is not None
+            else None
+        )
 
         # ── Build BootstrapContext ────────────────────────────────────────────
         worker_resolved_config: dict[str, object] = {
@@ -783,6 +854,8 @@ def ConfigureLogger(
             'module_routes': module_routes,
             'module_levels': module_levels,
             'mp_start_method': ipc_mp_ctx.get_start_method(),
+            'runtime_warning_path': resolved_runtime_warning_path,
+            'shutdown_report_path': resolved_shutdown_report_path,
         }
         resolved_config_digest = hashlib.sha256(
             json.dumps(worker_resolved_config, sort_keys=True).encode()
@@ -802,6 +875,7 @@ def ConfigureLogger(
             writer_flush_batch=resolved_writer_flush_batch,
             ipc_log_timeout=ipc_log_timeout,
             overflow_policy='drop',
+            runtime_warning_queue=runtime_warning_queue,
         )
 
         # ── Build Writer-side sink groups ─────────────────────────────────────
@@ -912,6 +986,76 @@ def GetWorkerInitializer(
         (AttachCurrentProcess, (ctx,)) — passes directly to Pool/Executor.
     """
     return (AttachCurrentProcess, (ctx,))
+
+
+def GetDeliveryStatus() -> DeliveryStatus:
+    """Return a runtime snapshot of Writer-owned delivery counters.
+
+    The snapshot is intended for live status checks. During normal runtime,
+    `missing_detach_clients` is always zero because active workers are not
+    treated as crashed until shutdown report generation.
+
+    Raises:
+        RuntimeError: Multiprocess logging is not configured or Writer stopped.
+        TimeoutError: The Writer did not return a STATUS ACK in time.
+    """
+    runtime = _mp_writer_runtime
+    if runtime is None:
+        raise RuntimeError('multiprocess runtime is not configured')
+    if (
+        runtime._control_thread is None
+        or not runtime._control_thread.is_alive()
+        or runtime._stop_requested
+    ):
+        raise RuntimeError('writer runtime has stopped')
+
+    state = _mp_attach._mp_runtime_state
+    client_id = state.client_id if state is not None else 'status-client'
+    mp_start_method: object | None
+    if state is not None:
+        mp_start_method = state.ctx.resolved_config.get('mp_start_method')
+        control_queue = state.ctx.control_queue
+    else:
+        mp_start_method = runtime._ctx.resolved_config.get('mp_start_method')
+        control_queue = runtime._ctx.control_queue
+
+    send_conn, recv_conn = _make_pipe_with_context(mp_start_method)
+    req = _make_status_request(client_id=client_id, send_conn=send_conn)
+    try:
+        _send_control_request(control_queue, req)
+        ack = _wait_control_ack(recv_conn, req['request_id'])
+        _raise_for_failed_ack(ack)
+        return _coerce_delivery_status(ack.get('result', {}))
+    finally:
+        try:
+            send_conn.close()
+        except Exception:
+            pass
+
+
+def _coerce_delivery_status(result: dict[str, Any]) -> DeliveryStatus:
+    return cast(
+        DeliveryStatus,
+        {
+            'schema_version': int(result.get('schema_version', 1)),
+            'session_id': str(result.get('session_id', '')),
+            'writer_pid': int(result.get('writer_pid', 0)),
+            'active_clients': int(result.get('active_clients', 0)),
+            'attempted': int(result.get('attempted', 0)),
+            'accepted': int(result.get('accepted', 0)),
+            'delivered': int(result.get('delivered', 0)),
+            'partial_delivered': int(result.get('partial_delivered', 0)),
+            'known_rejected': int(result.get('known_rejected', 0)),
+            'known_dropped': int(result.get('known_dropped', 0)),
+            'unexplained_lost': int(result.get('unexplained_lost', 0)),
+            'writer_reject_breakdown': dict(result.get('writer_reject_breakdown', {})),
+            'worker_drop_breakdown': dict(result.get('worker_drop_breakdown', {})),
+            'writer_drop_breakdown': dict(result.get('writer_drop_breakdown', {})),
+            'snapshot_complete': bool(result.get('snapshot_complete', False)),
+            'missing_detach_clients': int(result.get('missing_detach_clients', 0)),
+            'stop_requested': bool(result.get('stop_requested', False)),
+        },
+    )
 
 
 def ReopenLogFiles() -> None:

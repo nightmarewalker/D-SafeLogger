@@ -132,12 +132,13 @@ def _make_attach_request(
     *,
     protocol_version: int,
     registry_hash: str,
+    pid: int | None = None,
 ) -> ControlRequest:
     return _make_request(
         'ATTACH', client_id, send_conn,
         {
             'session_id': session_id,
-            'pid': os.getpid(),
+            'pid': os.getpid() if pid is None else pid,
             'protocol_version': protocol_version,
             'registry_hash': registry_hash,
         },
@@ -153,15 +154,31 @@ def _make_detach_request(
     send_conn: Any,
     *,
     close_marker_failed: bool = False,
+    local_drop_summary: dict[str, int] | None = None,
 ) -> ControlRequest:
     return _make_request(
         'DETACH', client_id, send_conn,
-        {'close_marker_failed': close_marker_failed},
+        {
+            'close_marker_failed': close_marker_failed,
+            'local_drop_summary': local_drop_summary or {
+                'attempted': 0,
+                'drop_counter': 0,
+                'overload_shed': 0,
+                'transport_closed_drop': 0,
+                'writer_unavailable_drop': 0,
+                'timeout_drop': 0,
+                'module_transport_count': 0,
+            },
+        },
     )
 
 
 def _make_reopen_request(client_id: str, send_conn: Any) -> ControlRequest:
     return _make_request('REOPEN', client_id, send_conn)
+
+
+def _make_status_request(client_id: str, send_conn: Any) -> ControlRequest:
+    return _make_request('STATUS', client_id, send_conn)
 
 
 def _make_stop_request(client_id: str, send_conn: Any) -> ControlRequest:

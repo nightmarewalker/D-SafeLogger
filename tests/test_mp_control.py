@@ -139,19 +139,48 @@ class TestRequestBuilders:
         send_conn, _ = _make_pipe()
         req = _make_attach_request(
             'client-1', send_conn, 'session-abc',
-            protocol_version=1, registry_hash='hash-abc',
+            protocol_version=1, registry_hash='hash-abc', pid=12345,
         )
         assert req['command'] == 'ATTACH'
         assert req['client_id'] == 'client-1'
         assert req['payload']['session_id'] == 'session-abc'
         assert req['payload']['protocol_version'] == 1
         assert req['payload']['registry_hash'] == 'hash-abc'
-        assert 'pid' in req['payload']
+        assert req['payload']['pid'] == 12345
 
     def test_make_detach_request_fields(self):
         send_conn, _ = _make_pipe()
         req = _make_detach_request('client-2', send_conn)
         assert req['command'] == 'DETACH'
+        assert req['payload']['local_drop_summary'] == {
+            'attempted': 0,
+            'drop_counter': 0,
+            'overload_shed': 0,
+            'transport_closed_drop': 0,
+            'writer_unavailable_drop': 0,
+            'timeout_drop': 0,
+            'module_transport_count': 0,
+        }
+
+    def test_make_detach_request_accepts_local_drop_summary(self):
+        send_conn, _ = _make_pipe()
+        summary = {
+            'attempted': 6,
+            'drop_counter': 4,
+            'overload_shed': 1,
+            'transport_closed_drop': 1,
+            'writer_unavailable_drop': 1,
+            'timeout_drop': 1,
+            'module_transport_count': 2,
+        }
+        req = _make_detach_request(
+            'client-2',
+            send_conn,
+            close_marker_failed=True,
+            local_drop_summary=summary,
+        )
+        assert req['payload']['close_marker_failed'] is True
+        assert req['payload']['local_drop_summary'] == summary
 
     def test_make_reopen_request_fields(self):
         send_conn, _ = _make_pipe()

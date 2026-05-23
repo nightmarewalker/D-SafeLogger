@@ -1,15 +1,15 @@
-# D-SafeLogger テスト設計 v23j
+# D-SafeLogger テスト設計 v23k
 
 作成日: 2026-04-29
-対象バージョン: v23j（v23h OSS公開前指摘反映）
+対象バージョン: v23k（multiprocess observability 追加）
 
 ---
 
 ## 概要
 
-v23j は v23h 完了時点の OSS 公開前指摘に対するユーザー判断に基づく修正版である。v23h の sink 分類 / bounded shutdown 契約を維持した上で、公開前のテスト契約・MP E2E・benchmark 成果物管理を確定する。
+v23k は v23j の公開前品質ゲートを維持したまま、multiprocess observability の runtime warning、shutdown report、delivery status schema を追加する。
 
-現行 v23j のローカル検証 baseline は Python 3.14.3 / Windows 上の結果であり、`658 passed, 3 skipped`（`661` collected）である。fork E2E は POSIX-only、Windows spawn E2E は Windows-only であるため、OS によって skipped 数は変動し得る。0.2.2 向けの公開前品質ゲートでは、これに加えて `mypy src` / `pyright src` / `pyright tests/typing_smoke` / built wheel に対する `pyright --verifytypes dsafelogger --ignoreexternal` 100% completeness gate を実行する。
+現行 v23k のローカル検証 baseline は Python 3.14.3 / Windows 上の結果であり、`714 passed, 3 skipped`（`717` collected）である。fork E2E は POSIX-only、Windows spawn E2E は Windows-only であるため、OS によって skipped 数は変動し得る。0.2.2 向けの公開前品質ゲートでは、これに加えて `mypy src` / `pyright src` / `pyright tests/typing_smoke` / built wheel に対する `pyright --verifytypes dsafelogger --ignoreexternal` 100% completeness gate を実行する。
 
 v23h から継続する動作変更は以下:
 
@@ -172,3 +172,14 @@ v23j では benchmark 公開成果物の管理方式を変更する。runner は
 - 仕様書 `D_SafeLogger_Specification_v23_full.md` §11.16.1 / §11.27 / §12.3 / changelog v23h
 - 詳細設計 `D-SafeLogger_DetailedDesign_v23.md` §8.5 / §15a.5.5 / changelog v23h
 - inventory `D-SafeLogger_v23_baseline_diff_inventory.md` 差分 #1（v23h L4 訂正）
+
+## v23k Multiprocess Observability Test Addendum
+
+v23k では multiprocess runtime observability の回帰を以下のテスト群で固定する。
+
+- `tests/test_runtime_warning.py`: runtime warning JSONL schema、worker warning queue、fallback file、rate limit、non-blocking warning path、module transport coverage、warning queue drain semantics。
+- `tests/test_shutdown_report.py`: shutdown report atomic write、clean shutdown、worker crash identity、drain deadline、write failure fallback、writer-side / attempted-side invariant、breakdown source separation、partial delivery independence。
+- `tests/test_delivery_status_api.py`: `mp.GetDeliveryStatus()` public API、`DeliveryStatus` required fields、breakdown keys、ACK timeout、active-worker incomplete snapshot、sink reject、partial delivery、snapshot completion after detach。
+- `tests/typing_smoke/public_api_smoke.py`: `mp.DeliveryStatus` and `mp.GetDeliveryStatus()` user-facing type smoke.
+
+Quality gates: `uv run pytest tests -q`, `uv run pyright tests/typing_smoke`, `uv run mypy src`, `uv run pyright src`, and `uv run python scripts/check_type_completeness.py --min-score 100`.

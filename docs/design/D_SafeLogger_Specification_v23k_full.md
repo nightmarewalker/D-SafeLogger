@@ -1,4 +1,4 @@
-# D-SafeLogger 基本設計仕様書 v23j (Capture/Transport/Sink 3層化・dsafelogger.mp 正式仕様・外部 log rotation 共存・Control Plane/Backpressure 固定化・Vendor-Agnostic)
+# D-SafeLogger 基本設計仕様書 v23k (Capture/Transport/Sink 3層化・dsafelogger.mp 正式仕様・外部 log rotation 共存・Control Plane/Backpressure 固定化・Vendor-Agnostic)
 
 ## 1. 文書の目的と位置づけ
 本モジュールは、`D` によって提供される様々な Python エコシステム（D-Settings, DPySide, D-MessageRouter 等）の全プロジェクトで共通利用する、軽量・高速・高機能なロギング基盤である。
@@ -2500,3 +2500,15 @@ bounded wait (≤ timeout) -> visible warning (drain incomplete を可視化) ->
 ### v23j Type Validation CI Addendum
 
 0.2.2 向けの公開前品質ゲートとして、`py.typed` 配布に対応する型検証を CI に追加する。source typing は `mypy src` と `pyright src`、利用者視点の smoke test は `pyright tests/typing_smoke`、packaged typing は built wheel を install した上で `pyright --verifytypes dsafelogger --ignoreexternal` を 100% completeness threshold で検証する。verifytypes 実行時は editable install へ戻らないよう `uv run --no-sync` を使う。smoke test ディレクトリは spawn worker で標準ライブラリ `typing` を shadow しないよう `tests/typing_smoke/` とし、`tests/typing/` は使わない。これらは runtime behavior を変更しない公開品質ゲートの追加であり、release version bump は release readiness 確定時に行う。
+
+### v23k Multiprocess Observability Addendum
+
+v23k では `dsafelogger.mp` の console-less 運用向け可観測性を正式化する。`mp.ConfigureLogger()` は `runtime_warning_path` と `shutdown_report_path` を受け取り、stderr を確認できない環境でも runtime warning JSONL と shutdown report JSON によって配送状態を確認できる。`mp.GetDeliveryStatus()` と `mp.DeliveryStatus` は実行中の Writer counters を公開 API と型付き runtime snapshot として提供する。
+
+Runtime warning は application log pipeline を経由しない独立 sink とし、通常時は worker から専用 warning queue を通じて Writer が JSONL append する。warning queue または IPC が利用できない場合、worker は `<runtime_warning_path>.<pid>.fallback.jsonl` へ置き手紙として書き込む。これにより sink failure を application handler に再投入しない。
+
+Shutdown report は Writer 停止時に同一ディレクトリの一時ファイルから `os.replace()` で atomic write される。Windows では target file が共有削除なしで open されていると置換に失敗し得るため、失敗時は RuntimeWarningSink と stderr に fallback warning を出し、shutdown 自体は完了させる。
+
+Delivery accounting は `attempted`, `accepted`, `delivered`, `partial_delivered`, `known_rejected`, `known_dropped`, `unexplained_lost` を公開 contract とする。詳細内訳は `writer_reject_breakdown`, `worker_drop_breakdown`, `writer_drop_breakdown` に分離し、Writer 由来 drop を worker drop に混ぜない。`partial_delivered` は `delivered` と `known_rejected` から独立した terminal state である。
+
+MP runtime wire protocol は同一インストールバージョンの Writer/worker を前提とする。DETACH payload には worker local drop summary を含め、ATTACH payload には shutdown report の missing worker 調査用 pid を含める。`diagnose` は application log record の診断展開、runtime warnings は transport/runtime 障害の JSONL、delivery status/report は配送 accounting の snapshot/report として概念を分離する。

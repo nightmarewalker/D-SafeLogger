@@ -26,7 +26,7 @@ Snapshot a LogRecord into a picklable LogEvent on the producer thread.
 
 ## Classes
 
-### `BootstrapContext(protocol_version: 'int', session_id: 'str', writer_pid: 'int', log_queue: 'Any', control_queue: 'Any', resolved_config: 'dict[str, object]', resolved_config_digest: 'str', registry_hash: 'str', log_queue_maxsize: 'int', ipc_client_queue_maxsize: 'int', writer_flush_batch: 'int', ipc_log_timeout: 'float', overflow_policy: "Literal['drop']") -> None`
+### `BootstrapContext(protocol_version: 'int', session_id: 'str', writer_pid: 'int', log_queue: 'Any', control_queue: 'Any', resolved_config: 'dict[str, object]', resolved_config_digest: 'str', registry_hash: 'str', log_queue_maxsize: 'int', ipc_client_queue_maxsize: 'int', writer_flush_batch: 'int', ipc_log_timeout: 'float', overflow_policy: "Literal['drop']", runtime_warning_queue: 'Any | None' = None) -> None`
 
 Opaque, picklable context passed to worker processes via mp.GetWorkerInitializer.
 

@@ -27,8 +27,8 @@ include benchmarks/results/benchmarks_multi_integ_20260506_185947/summary.json
 include benchmarks/results/benchmarks_multi_integ_20260506_185947/summary.md
 include benchmarks/results/benchmarks_multi_perf_20260506_190518/summary.json
 include benchmarks/results/benchmarks_multi_perf_20260506_190518/summary.md
-include benchmarks/results/benchmarks_multi_resilience_20260506_211129/summary.json
-include benchmarks/results/benchmarks_multi_resilience_20260506_211129/summary.md
+include benchmarks/results/benchmarks_multi_resilience_20260523_084326/summary.json
+include benchmarks/results/benchmarks_multi_resilience_20260523_084326/summary.md
 
 prune .claude
 prune .github

@@ -14,7 +14,7 @@ D-SafeLogger is competitive in single-process logging, especially in async mode 
 
 Multiprocess results should be interpreted differently. D-SafeLogger is not the fastest multiprocess backend in this benchmark; stdlib logging leads throughput in all measured multiprocess performance cells. D-SafeLogger's multiprocess value is not raw speed. Its value is Writer-owned sinks, explicit attach/detach, bounded shutdown, and classified delivery-state observability under operational stress.
 
-The resilience profile is the strongest multiprocess evidence. Across 12 D-SafeLogger resilience summary rows, D-SafeLogger produced classified loss/reject/drop fields for 12/12 rows and fully explained 12/12 rows. That is the benchmark-backed claim: D-SafeLogger can explain what happened to records under backpressure, sink rejection, and mixed worker shutdown, instead of leaving delivery state ambiguous.
+The resilience profile is the strongest multiprocess evidence. Across 16 D-SafeLogger resilience summary rows, D-SafeLogger produced classified loss/reject/drop fields for 16/16 rows and fully explained 16/16 rows. That is the benchmark-backed claim: D-SafeLogger can explain what happened to records under backpressure, sink rejection, mixed worker shutdown, and warning-IPC fallback, instead of leaving delivery state ambiguous.
 
 ## Published Summaries
 
@@ -30,7 +30,7 @@ The resilience profile is the strongest multiprocess evidence. Across 12 D-SafeL
 | Single-process | `benchmark_20260506_180018` | Throughput and latency comparison across D-SafeLogger, stdlib logging, loguru, and structlog |
 | Multiprocess integrity | `benchmarks_multi_integ_20260506_185947` | Normal-condition delivery completeness and JSON/route integrity |
 | Multiprocess performance | `benchmarks_multi_perf_20260506_190518` | Raw multiprocess throughput and latency comparison |
-| Multiprocess resilience | `benchmarks_multi_resilience_20260506_211129` | Operational failure-mode observability and classified delivery state |
+| Multiprocess resilience | `benchmarks_multi_resilience_20260523_084326` | Operational failure-mode observability and classified delivery state |
 
 The selected sessions are controlled by [`benchmarks/summary/manifest.json`](benchmarks/summary/manifest.json). Running a new benchmark does not automatically change the public analysis.
 
@@ -112,26 +112,37 @@ The resilience profile measures what can be explained during operational stress.
 
 Selected result summary:
 
-- D-SafeLogger produced classified loss/reject/drop fields for 12/12 summary rows.
-- D-SafeLogger fully explained 12/12 summary rows.
+- D-SafeLogger produced classified loss/reject/drop fields for 16/16 summary rows.
+- D-SafeLogger fully explained 16/16 summary rows.
 - stdlib logging and loguru rows are marked `observability_gap` where accepted/dropped/unexplained state cannot be classified by the benchmarked backend contract.
 
 Representative D-SafeLogger rows:
 
 | Scenario | Python/GIL | Attempted | Accepted | Delivered | KnownRejected | KnownDropped | UnexplainedLost | Shutdown |
 |---|---|---:|---:|---:|---:|---:|---:|---|
-| burst_backpressure | 3.13/enabled | 100 | 100 | 99 | 0 | 1 | 0 | clean |
-| burst_backpressure | 3.14/enabled | 100 | 100 | 100 | 0 | 0 | 0 | clean |
-| burst_backpressure | 3.14/disabled | 100 | 100 | 100 | 0 | 0 | 0 | clean |
-| rolling_restart_mixed_shutdown | all measured | 62 | 62 | 62 | 0 | 0 | 0 | clean_with_worker_crash |
+| burst_backpressure | all measured | 100 | 100 | 100 | 0 | 0 | 0 | clean |
+| ipc_forced_disconnect | all measured | 100 | 100 | 100 | 0 | 0 | 0 | clean |
+| rolling_restart_mixed_shutdown | all measured | 50 | 62 | 62 | 0 | 0 | 0 | clean_with_worker_crash |
 | sink_temporarily_unavailable | all measured | 100 | 100 | 0 | 100 | 0 | 0 | clean |
 
 Interpretation:
 
 - In backpressure scenarios, D-SafeLogger may drop records, but the drops are classified as known drops rather than unexplained loss.
+- In warning-IPC fallback scenarios, D-SafeLogger records per-worker fallback warning files while preserving delivery accounting.
 - In mixed shutdown scenarios, D-SafeLogger can distinguish a clean writer shutdown with worker crash/termination from unexplained record loss.
+- In mixed shutdown rows, `attempted` can be lower than `accepted` because a crashed worker may enqueue records before it can report its local attempted count via DETACH. `clean_with_worker_crash` and `snapshot_complete=false` mark that attempted-side worker accounting is incomplete.
 - In sink-unavailable scenarios, D-SafeLogger classifies rejected records as known sink rejects rather than reporting ambiguous loss.
 - This is the core multiprocess claim: D-SafeLogger does not promise impossible failure-free logging; it promises explicit accounting of what happened.
+
+### Console-less Observability
+
+The resilience benchmark now reads D-SafeLogger delivery state through the public `dsafelogger.mp.GetDeliveryStatus()` API instead of a Writer runtime private method. The benchmark records the public accounting schema, including `writer_reject_breakdown`, `worker_drop_breakdown`, `writer_drop_breakdown`, and `partial_delivered` as a separate non-reject category.
+
+`partial_delivered` is a third terminal state: it is neither `delivered` (all required sinks succeeded) nor `known_rejected` (zero required sinks succeeded). The writer-side invariant is `accepted = delivered + partial_delivered + known_rejected + writer_known_dropped + unexplained_lost`.
+
+For new resilience sessions, D-SafeLogger also enables `runtime_warning_path` and `shutdown_report_path` in the benchmark scratch directory. Runtime warnings are emitted to an independent JSON Lines sink, and shutdown reports provide an atomic final snapshot for post-run diagnosis without requiring console output. Workers that cannot reach the Writer warning IPC path fall back to per-pid local files named `<runtime_warning_path>.<pid>.fallback.jsonl`; console-less deployments should collect both the primary warning file and any fallback files.
+
+See [`docs/design/v23k_supplements/delivery_status_schema.md`](docs/design/v23k_supplements/delivery_status_schema.md) for the authoritative accounting contract.
 
 ## What To Claim
 
@@ -141,6 +152,7 @@ Interpretation:
 - D-SafeLogger async is competitive in single-process logging and leads several low-latency cells in the selected benchmark.
 - D-SafeLogger multiprocess mode centralizes sink ownership in a Writer runtime.
 - D-SafeLogger multiprocess resilience profiling exposes classified delivery-state counters: attempted, accepted, delivered, known rejected, known dropped, and unexplained lost.
+- D-SafeLogger multiprocess observability can be consumed without console output through `GetDeliveryStatus()`, runtime warning JSON Lines, and shutdown report JSON.
 
 ## What Not To Claim
 

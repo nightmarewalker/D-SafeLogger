@@ -26,11 +26,11 @@ uv sync --group dev
 uv run pytest tests -v
 ```
 
-Current v23j local validation on Python 3.14.3 / Windows:
+Current v23k local validation on Python 3.14.3 / Windows:
 
 ```text
-658 passed, 3 skipped
-661 collected
+714 passed, 3 skipped
+717 collected
 ```
 
 The collected test count is the baseline. The number of skipped tests is platform-dependent because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
@@ -109,6 +109,7 @@ uv run pytest tests -x -v
 | Custom levels | `tests/test_levels.py` |
 | Multiprocess unit tests | `tests/test_mp_attach.py`, `tests/test_mp_configure.py`, `tests/test_mp_control.py`, `tests/test_mp_runtime.py` |
 | Multiprocess E2E | `tests/test_mp_integration.py`, `tests/test_mp_fork.py`, `tests/test_mp_spawn_windows.py` |
+| Multiprocess observability | `tests/test_runtime_warning.py`, `tests/test_shutdown_report.py`, `tests/test_delivery_status_api.py` |
 | Third-party coexistence | `tests/test_opentelemetry.py`, `tests/test_structlog.py` |
 | Branch coverage edge cases | `tests/test_coverage_boost.py` |
 
@@ -127,7 +128,7 @@ Important expectations:
 - Fork E2E tests are POSIX-only and are skipped on Windows.
 - Windows spawn tests are Windows-only and are skipped elsewhere.
 - Tests must not rely on `multiprocessing.Queue.empty()` for correctness. Use timeout-based `get()` or fake/recording queues instead.
-- CloseMarker drain, control-plane ACKs, backpressure, reject counters, partial delivery, and bounded shutdown warning paths are covered by MP tests.
+- CloseMarker drain, control-plane ACKs, backpressure, reject counters, partial delivery, runtime warning JSON Lines/fallback files, shutdown report JSON, delivery status snapshots, and bounded shutdown warning paths are covered by MP tests.
 
 ## Type Validation
 
@@ -161,13 +162,13 @@ uv sync --reinstall
 
 Use `uv run --no-sync` for the completeness check so the wheel install is not replaced by the editable project before `pyright --verifytypes` runs.
 
-### Latest local validation (2026-05-21 / Python 3.14.3 / Windows)
+### Latest local validation (2026-05-23 / Python 3.14.3 / Windows)
 
 | Tool | Version | Result |
 |---|---|---|
-| `mypy` | 2.1.0 | `Success: no issues found in 27 source files` |
+| `mypy` | 2.1.0 | `Success: no issues found in 29 source files` |
 | `pyright` | 1.1.409 | `0 errors, 0 warnings, 0 informations` |
-| `pyright --verifytypes dsafelogger --ignoreexternal` | 1.1.409 | `Type completeness score: 100%` (10 public symbols, 23 referenced internal symbols — all known type) |
+| `pyright --verifytypes dsafelogger --ignoreexternal` | 1.1.409 | `Type completeness score: 100%` |
 
 ### Package name vs. type checker target
 
@@ -245,7 +246,7 @@ uv run python scripts/generate_api_docs.py
 uv run python scripts/generate_api_docs.py --check
 ```
 
-Public design documents live under `docs/design/`. Verify the selected v23j design documents with:
+Public design documents live under `docs/design/`. Verify the selected v23k design documents with:
 
 ```bash
 uv run python scripts/check_design_docs_sync.py

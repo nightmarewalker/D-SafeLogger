@@ -4,19 +4,37 @@
 [![PyPI version](https://img.shields.io/pypi/v/d-safelogger.svg?cacheSeconds=3600)](https://pypi.org/project/d-safelogger/)
 [![Python](https://img.shields.io/pypi/pyversions/d-safelogger.svg?cacheSeconds=3600)](https://pypi.org/project/d-safelogger/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Zero Dependencies](https://img.shields.io/badge/dependencies-zero-brightgreen.svg)](#main-features)
+[![Zero Dependencies](https://img.shields.io/badge/dependencies-zero-brightgreen.svg)](#highlights)
 
 Languages: [English](README.md) | [日本語](README_ja.md)
 
-## Overview
-
 D-SafeLogger is a zero-dependency, stdlib logging-compatible logger built on Python's standard `logging` module.
 
-It extends the standard logging path instead of replacing it. Existing `logging.getLogger()` and `logger.info()` call sites can participate without modification, while D-SafeLogger adds append-only file routing, structured JSON Lines output, contextual logging, SHA-256 sidecars, environment-based operational overrides, and Writer-owned multiprocess logging.
+It extends the standard logging path instead of replacing it, so existing application code and third-party library logs can stay on the stdlib logging path. It is intended for Python applications that need local file logging to start small in development and become explicit, inspectable, and operationally controlled for services, scheduled jobs, audit-oriented logs, and multiprocess workers.
 
-Append-only routing means D-SafeLogger opens the next destination file instead of renaming or truncating the active log file. This avoids the common Windows file-lock failure mode of rename-based rotation. It also sidesteps the POSIX failure mode where a rename succeeds at the filesystem layer while existing file descriptors keep writing to the previous file.
+## Highlights
 
-The "Safe" in the name refers to operational safety: fail-fast setup, append-only file handling, producer-side context snapshots, bounded queues, explicit timeouts, and classified delivery-state accounting.
+1. **Stdlib `logging` compatible.** Existing `logger.info()` call sites and third-party libraries using `logging.getLogger()` participate without modification.
+
+2. **Append-only routing, no rename.** D-SafeLogger opens the next destination file instead of renaming or truncating the active log. This avoids the Windows file-lock failure mode of rename-based rotation and the POSIX case where a successful rename can leave the writer attached to the previous file descriptor.
+
+3. **Zero runtime dependencies.** The runtime package uses only the Python standard library. No extra runtime dependency chain is added to your application.
+
+4. **Start in three lines, add policy through configuration.** A minimal setup is three lines. The same call sites can stay in place while configuration adds 9 routing strategies (`daily`, `hourly`, `size`, and more), JSON Lines, SHA-256 sidecars and manifests, sensitive-keyword masking, diagnostic mode, and code / INI-dict / environment deployment layers.
+
+5. **Robust and flexible multiprocess logging.** A parent-side Writer owns file output while workers submit records over IPC. Process, Pool, and ProcessPoolExecutor patterns are covered, with delivery outcomes classified instead of hidden.
+
+## When to Use It
+
+Use D-SafeLogger when you want to keep standard `logging.getLogger()` call sites while adding:
+
+- append-only local file routing,
+- environment-driven operational overrides,
+- optional SHA-256 sidecars and manifests,
+- Writer-owned multiprocess file output,
+- classified delivery-state accounting.
+
+You probably do not need it if your application only writes to stdout/stderr and an external collector owns routing, retention, aggregation, and durability.
 
 ## Installation
 
@@ -63,43 +81,36 @@ For multiprocess setup, see [Multiprocess Logging](#multiprocess-logging). For I
 
 Configuration is fail-fast. D-SafeLogger rejects feature combinations that cannot take effect, such as cyclic routing with hash/archive retention, `routing_mode='none'` with D-SafeLogger-owned retention, or `structured=True` with custom formatter strings.
 
-## When to Use It
-
-Use D-SafeLogger when you want to keep standard `logging.getLogger()` call sites while adding:
-
-- append-only local file routing,
-- environment-driven operational overrides,
-- optional SHA-256 sidecars and manifests,
-- Writer-owned multiprocess file output,
-- classified delivery-state accounting.
-
-You probably do not need it if your application only writes to stdout/stderr and an external collector owns routing, retention, aggregation, and durability.
-
 ## Why D-SafeLogger?
 
-D-SafeLogger extends the standard logging path rather than replacing it: you keep using `logging.getLogger()` and existing `logger.info()` call sites, and the library adds safe local-file output on top: rename-free append-only routing, fail-fast configuration, SHA-256 sidecars, sensitive-data masking, environment-driven operational control, and a parent-side multiprocess Writer.
+D-SafeLogger extends the standard logging path rather than replacing it: you keep using `logging.getLogger()` and existing `logger.info()` call sites, and the library adds safe local-file output on top.
 
-If you already use `structlog` as a structured-logging frontend, D-SafeLogger coexists rather than replaces. `structlog` builds the event dictionary; D-SafeLogger handles file output, routing, sidecars, masking, and operational control. See [Structlog Coexistence](examples/16_structlog_coexistence.md) for two integration patterns.
+That matters when an application already has stdlib logging calls, or depends on libraries that emit through `logging.getLogger()`. D-SafeLogger lets those records enter the same routing, formatting, context, integrity, async, and multiprocess Writer path without forcing a new application-wide logging API.
+
+If you already use `structlog` as a structured-logging frontend, D-SafeLogger coexists rather than replaces it. `structlog` builds the event dictionary; D-SafeLogger handles file output, routing, sidecars, masking, and operational control. See [Structlog Coexistence](examples/16_structlog_coexistence.md) for two integration patterns.
 
 ## Why Routing Instead of External Rotation?
 
 External rotation typically renames or truncates an active log file, creates a replacement, and asks the application to reopen its sink. That is plumbing for a design that mutates the active file after the fact, not the core of writing log records.
 
-On POSIX systems, the rename can succeed even while the writer keeps writing through the old file descriptor. The filesystem call returned success, but the logger never actually moved to the new file.
+On Windows, active-file rename can fail because the writer still holds the file. On POSIX systems, the rename can succeed while the writer keeps writing through the old file descriptor. The filesystem call returned success, but the logger never actually moved to the new file.
 
 D-SafeLogger avoids that dependency by choosing the destination at write time. It opens the next destination at the routing boundary instead of mutating the active file and relying on a signal/reopen handshake.
 
 ## What "Safe" Means
 
-The "Safe" in the name is a design stance that runs across several dimensions of everyday operation, not only failure handling:
+"Safe" is not a promise that every record survives every possible failure. It is a design stance for reducing avoidable logging failures and making observable failures explainable.
 
-- **Startup safety:** invalid settings, inconsistent options, and unwritable destinations fail during setup. D-SafeLogger stops a broken logging configuration before the application starts doing real work, instead of silently degrading later.
-- **File safety:** the routing layer opens the next destination instead of renaming or truncating the active log file, which avoids the common Windows failure mode where active log files cannot be renamed. It also avoids the POSIX case where a successful rename leaves the writer appending to the previous file. Routed files can be paired with SHA-256 sidecars and an optional manifest, so log content is verifiable after the fact.
-- **Record and context safety:** request IDs, user IDs, job IDs, and other context are snapshotted on the producer side at hand-off, so listeners and Writers do not depend on live `contextvars`. Diagnostic local-variable snapshots and Writer-side formatting use the sensitive-keyword set established at configure time.
-- **Operational control:** environment variables provide explicit runtime overrides for diagnostics, routing, hashing, log levels, and queue/timeout behavior without rebuilding or editing application code.
-- **Concurrency and multiprocess safety:** multiprocess workers do not open the shared log files themselves. A parent-side Writer owns the sinks and accepts records over IPC, with bounded queues and explicit timeouts that keep the host process from unbounded waits.
-- **Failure observability:** when records cannot be delivered, the runtime classifies the outcome where it can: `KnownRejected`, `KnownDropped`, or `UnexplainedLost`. Counters and shutdown summaries make abnormal scenarios describable rather than silent.
-- **Filesystem scope:** append-only routing avoids external rename/truncate of active log files. It does not make every destination filesystem equally safe. NFS, SMB/CIFS, FUSE mounts, cloud-synced folders, container bind mounts, and in-memory filesystems can have different rename, unlink, cache, durability, or lifetime semantics. For audit-oriented deployments, prefer writing active logs to a durable local filesystem and transferring closed routed files to archive or network storage.
+| Dimension | Meaning |
+|---|---|
+| Startup safety | Invalid settings, inconsistent options, and unwritable destinations fail during setup before the application starts doing real work. |
+| File safety | Routed log files are treated as append-only artifacts with an explicit lifecycle: active writing, closed routed file, optional SHA-256 sidecar, optional manifest, and downstream transfer or archive. Integrity support is for closed-file verification, not access control. |
+| Record and context safety | Context is snapshotted on the producer side at hand-off; diagnostics and Writer-side formatting use the sensitive-keyword set established at configure time. |
+| Operational control | Runtime overrides are intentionally explicit and operator-owned. Log levels, routing, hashing, and timeout behavior can be changed without rebuilding, while diagnostic local-variable expansion is limited to environment-variable opt-in and cannot be enabled by an unowned INI file. |
+| Concurrency and multiprocess safety | Cross-thread and cross-process logging paths use bounded queues, explicit timeouts, rejection/drop paths, and shutdown drain limits. The design favors hard ceilings over indefinite waiting. |
+| Delivery visibility | Abnormal delivery outcomes remain visible as counters and shutdown summaries. Even `UnexplainedLost` is preserved as an explicit state, so abnormal runs do not collapse into “the file is just shorter than expected.” |
+
+Append-only routing avoids external rename/truncate of active log files. It does not make every destination filesystem equally safe. NFS, SMB/CIFS, FUSE mounts, cloud-synced folders, container bind mounts, and in-memory filesystems can have different rename, unlink, cache, durability, or lifetime semantics. For audit-oriented deployments, prefer writing active logs to a durable local filesystem and transferring closed routed files to archive or network storage.
 
 ## Feature Comparison
 
@@ -148,31 +159,13 @@ Notes:
 
 **Delivery-state accounting** refers to per-record classification (`KnownRejected`, `KnownDropped`, `UnexplainedLost`) exposed through counters and shutdown summaries. See [`examples/12_multiprocess_logging.md`](examples/12_multiprocess_logging.md) and [BENCHMARK.md](BENCHMARK.md).
 
-## Main Features
-
-- **Zero runtime dependencies:** the package uses only the Python standard library at runtime.
-- **Stdlib logging compatibility:** existing `logger.info()` calls and libraries that use `logging.getLogger()` participate in the same logging setup.
-- **Centralized setup:** replace common `basicConfig()`, `dictConfig()`, formatter, handler, and rotating-file boilerplate with `ConfigureLogger()`.
-- **Fail-fast initialization:** invalid configuration and unwritable log destinations fail during setup instead of degrading silently.
-- **Append-only file routing:** the routing layer opens the next destination instead of renaming or truncating the active log file. This avoids the common Windows failure mode where active log files cannot be renamed, and it avoids the POSIX case where a writer may continue writing to the previous file after a successful rename.
-- **Retention for routed files:** routed files can be kept by `backup_count`; older files can be deleted by the purge worker or ZIP-archived with `archive_mode=True`.
-- **Classified delivery state:** loss, reject, and drop events are not treated as invisible file gaps. When records cannot be delivered, the runtime classifies the outcome as known-rejected, known-dropped, or unexplained-lost where applicable.
-- **Bounded logging path:** D-SafeLogger uses bounded queues, explicit timeouts, and explicit rejection paths to avoid unbounded logging-side waits in the host process.
-- **Structured JSON Lines:** emit log records as JSON fields for log collectors and observability pipelines.
-- **Contextual logging:** attach request IDs, user IDs, job IDs, or other context with thread-safe and async-safe propagation. Producer-side context snapshots are taken at hand-off so listeners and Writers do not look up live `contextvars`.
-- **Integrity sidecars:** generate SHA-256 sidecars and optional manifest entries for routed log files. This is tamper-evidence for closed files, not an access-control or compliance system.
-- **Operational overrides:** change log level, module routing, console output, color, hashing, config file path, and queue/timeout parameters through environment variables, typically to raise diagnostics in production without code changes.
-- **Environment-only diagnostic mode:** opt in via `D_LOG_DIAGNOSE=1` for `f_locals` expansion of selected frames; deliberately not exposed through INI or arguments, so it cannot be enabled by an unowned configuration file.
-- **Async transport:** opt in to queue-backed logging when application threads should avoid direct sink writes.
-- **Custom log levels:** `register_level()` to add named levels alongside the built-in five before `ConfigureLogger()`.
-- **External rotation reopen:** `ReopenLogFiles()` and its multiprocess equivalent reopen sinks after external log rotators such as `logrotate`.
-- **Delivery-state visibility (multiprocess):** worker logging exposes per-record delivery-state counters and shutdown summaries, so abnormal shutdowns, sink unavailability, and worker crashes are described rather than silent.
-
 ## Multiprocess Logging
 
 `dsafelogger.mp` is for applications where multiple worker processes need to send logs to shared destinations without each worker independently opening the same files.
 
 In this mode, a parent-side Writer owns the file sinks. Workers attach to the Writer and submit log records through IPC. This centralizes file ownership and exposes delivery-state counters such as accepted, delivered, rejected, dropped, and unexplained-lost.
+
+The public API is designed for three common worker patterns: `multiprocessing.Process`, `multiprocessing.Pool`, and `concurrent.futures.ProcessPoolExecutor`. The same Writer session can be bootstrapped into each pattern through explicit attach calls or the `GetWorkerInitializer()` helper used by pools and executors.
 
 The Writer shutdown path is bounded: it attempts to drain and join within a timeout, emits a visible warning if drain is incomplete, and avoids hanging the host process indefinitely.
 
@@ -195,7 +188,7 @@ Common environment overrides, using the default `D_LOG_*` prefix; the prefix is 
 - Single-process: `D_LOG_LEVEL`, `D_LOG_MODULES`, `D_LOG_CONFIG`, `D_LOG_DIAGNOSE`, `D_LOG_CONSOLE`, `D_LOG_COLOR`, `D_LOG_HASH`, `D_LOG_MANIFEST`, plus the industry-standard `NO_COLOR`, which is not affected by `env_prefix`.
 - Multiprocess (`dsafelogger.mp`): `D_LOG_IPC_LOG_TIMEOUT`, `D_LOG_IPC_LOG_QUEUE_MAXSIZE`, `D_LOG_IPC_CLIENT_QUEUE_MAXSIZE`, `D_LOG_WRITER_FLUSH_BATCH`. These tune backpressure behavior and are normally left at defaults.
 
-See [Configuration Guide](examples/02_configuration_guide.md) for INI files, dict configuration, module-specific routing, and precedence rules.
+See [Configuration Guide](examples/02_configuration_guide.md) for INI files, dict configuration, module-specific routing, and precedence rules. For routing-mode selection, purge/archive retention, and long-running file lifecycle examples, see [Long-Running Service](examples/07_long_running_service.md).
 
 ## Tutorials / Examples
 
@@ -238,7 +231,7 @@ See [BENCHMARK.md](BENCHMARK.md) for the selected runs, methodology, and the exp
 
 ## Testing / Quality
 
-The release gate runs the full dev test suite across Windows, macOS, and Linux on Python 3.11-3.14. CI also runs Ubuntu free-threaded CPython `3.13t` and `3.14t` compatibility jobs with `PYTHON_GIL=0`. Publication checks also verify generated API docs, public design documents, benchmark summaries, and package build output.
+The release gate runs the full dev test suite across Windows, macOS, and Linux on Python 3.11-3.14. CI also runs Ubuntu free-threaded CPython `3.13t` and `3.14t` compatibility jobs with `PYTHON_GIL=0`. Publication checks verify source typing, typing smoke tests, packaged `pyright --verifytypes`, generated API docs, public design documents, benchmark summaries, and package build output.
 
 See [TESTING.md](TESTING.md) for details.
 

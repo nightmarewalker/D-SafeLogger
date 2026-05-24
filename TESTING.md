@@ -29,7 +29,7 @@ uv run pytest tests -v
 Current v23k local validation on Python 3.14.3 / Windows:
 
 ```text
-723 passed, 7 skipped
+727 passed, 3 skipped
 730 collected
 ```
 
@@ -39,8 +39,8 @@ Latest coverage validation generated `coverage.xml` on Python 3.14.3 / Windows:
 
 ```text
 TOTAL coverage: 87%
-XML line-rate: 88.97%
-XML branch-rate: 81.46%
+XML line-rate: 89.17%
+XML branch-rate: 82.02%
 ```
 
 `coverage.xml`, `.coverage`, and `htmlcov/` are local/CI artifacts and are ignored by `.gitignore`; keep coverage numbers in documentation, not the generated files themselves.

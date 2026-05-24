@@ -244,9 +244,9 @@ D-SafeLogger は、採用済みの単一プロセス async ベンチマークで
 
 ## 互換性 / 対象外
 
-### 0.3.x からの移行
+### 0.4.0 以降への移行
 
-`register_level()` は 0.3.x 以降で `RegisterLevel()` に改名されます。これは public API
+`register_level()` は 0.4.0 以降で `RegisterLevel()` に改名されます。これは public API
 命名を意図的に正規化するための変更です。`from dsafelogger import register_level` は
 `from dsafelogger import RegisterLevel` に更新してください。D-SafeLogger の主要な public
 関数は PascalCase を採用します。これは通常の Python 関数名に対する PEP 8 の

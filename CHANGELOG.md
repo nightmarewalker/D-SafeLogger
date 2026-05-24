@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-25
+
 ### Added
 - `SafeShutdown()` public API for terminal single-process shutdown.
 - Ecosystem examples for console progress renderers, Sentry, pytest/warnings, web runtime ownership, cloud logging coexistence, and Qt GUI log-panel coexistence.

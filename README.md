@@ -244,9 +244,9 @@ See [TESTING.md](TESTING.md) for details.
 
 ## Compatibility / Non-goals
 
-### Migration from 0.3.x
+### Migration to 0.4.0 and later
 
-`register_level()` is renamed to `RegisterLevel()` after 0.3.x as an intentional
+`register_level()` is renamed to `RegisterLevel()` in 0.4.0 and later as an intentional
 public API normalization. Update imports such as
 `from dsafelogger import register_level` to `from dsafelogger import RegisterLevel`.
 D-SafeLogger public functions intentionally use PascalCase for the primary API

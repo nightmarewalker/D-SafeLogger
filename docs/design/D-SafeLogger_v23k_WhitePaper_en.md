@@ -135,7 +135,7 @@ This white paper is written within the following scope:
 - 5.4 File Integrity Verification (SHA-256/Manifest)
 - 5.5 Structured logging and per-sink Formatter configuration
 - 5.6 Contextualize (contextualize / FrozenContext)
-- 5.7 Custom Log Level (register_level)
+- 5.7 Custom Log Level (RegisterLevel)
 - 5.8 Console color output
 - 5.9 async transport (QueueTransport)
 - 5.10 5-state life cycle
@@ -329,7 +329,7 @@ Official design document §2 lists 19 advantages of the entire v23k architecture
 |---|---|
 | JSONL Structured Log | Switch to JSON per line while preserving Append-Only architecture |
 | Contextualize | Utilize `contextvars` to automatically assign identifiers to all logs within a specific scope. Independent isolation between threads and asyncio tasks |
-| Custom log level | `register_level()` allows you to insert a custom level at any numerical position in addition to the standard 5 levels. Bulk registration of 3-letter abbreviations, ANSI colors, and convenient methods can be completed with a single call before `ConfigureLogger`. **Built-in 5 stages are inviolable** |
+| Custom log level | `RegisterLevel()` allows you to insert a custom level at any numerical position in addition to the standard 5 levels. Bulk registration of 3-letter abbreviations, ANSI colors, and convenient methods can be completed with a single call before `ConfigureLogger`. **Built-in 5 stages are inviolable** |
 | Color palette settings | ANSI colors can be changed using the `color_{abbreviation}` key in the `[global]` section. For 2nd layer (INI/dict) only |
 | No-Copy Snapshot (v20) | Optimized async mode snapshot / hand-off to O(1) reference passing with immutability guarantee by `contextvars.ContextVar[MappingProxyType]`. Mutable values are rejected with Fail-Fast |
 | Full Transport integration of module-specific path (v21) | Apply `is_async=True` semantics consistently not only to root route but also to module-specific path route |
@@ -400,7 +400,7 @@ Nondestructive level display resolution (§1.3.5, revised v21) is a typical exam
 - Guaranteed the same semantics for all styles of `%` / `{}` / `$` allowed by `logging.Formatter`.
 This is an attitude that structurally guarantees that ``other libraries and other code built on top of stdlib `logging` will not have their prerequisites violated due to the existence of this library.''
 #### 1.5.4 "Extension is closed before ConfigureLogger"
-The provisions of `register_level()` (§2, §1.3.6) are an example of this.
+The provisions of `RegisterLevel()` (§2, §1.3.6) are an example of this.
 - Registration of custom log level can be completed with a single call **before `ConfigureLogger()`**.
 - Since it is determined before the evaluation of the 3-layer configuration management pipeline (env > INI > arguments), the order of level name resolution is determined **uniquely in the initialization flow**.
 - Built-in 5 levels are protected as inviolable.
@@ -414,7 +414,7 @@ From the materials reviewed in this chapter, the design goals as of v23k can be 
 3. **``Safe'' is not a single concept but is developed as a six-axis operational dimension**: The Overview section of the README clearly identifies six axes: startup safety / file safety / record・context safety / operational control / concurrency・multiprocess safety / failure observability, and each axis corresponds to the subsequent individual function design.
 4. **The 19 items in §2 of the design document can be organized into 6 groups: "Do not depend on / Do not break / Do not deteriorate silently / Make it explainable / Expand but do not replace / Complete locally"**: The 19 advantages that appear to be scattered on the surface can be derived from a consistent design attitude as shown in §1.3.1 to §1.3.6.
 5. **Multiprocess feature claims are placed on observability rather than raw throughput**: Both `BENCHMARK.md` and Design Document §2 describe the value of `dsafelogger.mp` as the observability of Writer-owned sinks and classified delivery states, and raw throughput does not claim precedence.
-6. **Extension is closed before the initialization boundary**: The series of regulations that limit `register_level()` to before `ConfigureLogger`, limit `diagnose` to environment variables, and fail-fast verify INI settings are consistent design decisions that structurally do not allow dynamic changes that cross the initialization boundary.
+6. **Extension is closed before the initialization boundary**: The series of regulations that limit `RegisterLevel()` to before `ConfigureLogger`, limit `diagnose` to environment variables, and fail-fast verify INI settings are consistent design decisions that structurally do not allow dynamic changes that cross the initialization boundary.
 7. **Relationship with structlog/Loguru is not a competition but separation of duties**: The README "Why D-SafeLogger?" section and the Feature Comparison table position the combination of stdlib compatibility × zero external dependencies × append-only routing × SHA-256 sidecar × parent side multiprocess Writer as a unique axis of D-SafeLogger, and the structlog structured front end Loguru The design axes do not intersect with the DX optimization.
 ---
 
@@ -434,7 +434,7 @@ These ideas will be implemented as a concrete architecture (3-layer configuratio
 The module configuration of v23k defined in detailed design document §1 is as follows (package name `dsafelogger`).
 ```text
 dsafelogger/
-  __init__.py # single-process public API (ConfigureLogger, GetLogger, register_level, ReopenLogFiles)
+  __init__.py # single-process public API (ConfigureLogger, GetLogger, RegisterLevel, ReopenLogFiles)
   _logger.py # DSafeLogger class (logging.Logger extension)
   _handler.py # AppendOnlyFileHandler
   _async.py # DSafeQueueHandler / DSafeQueueListener / safe shutdown
@@ -499,7 +499,7 @@ Design document §10 lists public APIs. The single-process version (`dsafelogger
 |---|---|---|
 | `ConfigureLogger(default_level, log_path, pg_name, env_prefix, config_file, config_dict, is_async, backup_count, archive_mode, routing_mode, interval, max_bytes, max_lines, max_count, suffix_digits, console_out, structured, fmt, file_fmt, console_fmt, datefmt, enable_hash, manifest_path, sens_kws, sens_kws_replace) -> None` | Once at startup | 5 state idempotent management. `unconfigured` / `auto` / `explicit` / `configuring` / `shutting_down`. Allow auto-fire (`GetLogger()` implicit initialization when preceding) |
 | `GetLogger(name='') -> logging.Logger` | Any time | Wrap standard `logging.getLogger()`. Root logger acquisition is `name=''`. Allow default initialization by **auto-fire** when uninitialized |
-| `register_level(name, value, abbreviation, color='') -> None` | 0+ times before startup | Call **before** `ConfigureLogger()`. `shutting_down` Inside is `RuntimeError` |
+| `RegisterLevel(name, value, abbreviation, color='') -> None` | 0+ times before startup | Call **before** `ConfigureLogger()`. `shutting_down` Inside is `RuntimeError` |
 | `ReopenLogFiles() -> None` | Any time | `ValueError` if sink other than `routing_mode='none'` is active. external rotation coexistence only |
 #### 2.2.2 multiprocess API (`dsafelogger.mp`)
 | API | Type | Main contract |
@@ -643,7 +643,7 @@ Default format string:
 ```
 
 - Date and time format: `%Y-%m-%d %H:%M:%S`
-- Level abbreviations: `DBG` / `INF` / `WAR` / `ERR` / `CRI` (and `register_level()` registered custom level)
+- Level abbreviations: `DBG` / `INF` / `WAR` / `ERR` / `CRI` (and `RegisterLevel()` registered custom level)
 #### 2.4.4 Non-destructive handling of LogRecord
 Design document §9.7 and detailed design document §4 are specified as mandatory implementation patterns.
 > The same instance of `logging.LogRecord` is shared among all handlers. If Formatter or Handler directly rewrites attributes such as `record.levelname` or `record.msg`, destructive side effects will propagate to subsequent handlers.
@@ -671,16 +671,16 @@ The following provisions have been added in the design document §2 v21 revision
 Design document §9.8 defines.
 - Abbreviation conversion is performed using local mapping that is completed within the scope of Formatter's responsibilities.
 - Do not use global level name override with `logging.addLevelName()` (to avoid process-global side effects; maintain test independence of third-party libraries).
-- However, `logging.addLevelName(value, name)` is called inside `register_level()`. This is a numerical value → name mapping necessary for normal operation of `logger.log(value, msg)` / `isEnabledFor(value)`, and is different from abbreviation conversion.
+- However, `logging.addLevelName(value, name)` is called inside `RegisterLevel()`. This is a numerical value → name mapping necessary for normal operation of `logger.log(value, msg)` / `isEnabledFor(value)`, and is different from abbreviation conversion.
 - `LEVEL_MAP` / `COLOR_MAP` is not a class variable but an **instance variable**, and constructs an integrated map of the built-in 5 levels and custom level when Formatter is initialized.
 #### 2.4.6 Custom Log Level
-`register_level()` as specified by design document §9.9:
+`RegisterLevel()` as specified by design document §9.9:
 | Terms | Contents |
 |---|---|
-| Calling order | `register_level()` (any number of times) → `ConfigureLogger()` (1 time) → `GetLogger()` (any number of times) |
-| Subsequent calls | `register_level()` after `ConfigureLogger()` is `RuntimeError`. `shutting_down` Inside too `RuntimeError` |
+| Calling order | `RegisterLevel()` (any number of times) → `ConfigureLogger()` (1 time) → `GetLogger()` (any number of times) |
+| Subsequent calls | `RegisterLevel()` after `ConfigureLogger()` is `RuntimeError`. `shutting_down` Inside too `RuntimeError` |
 | Built-in protection | Value 10/20/30/40/50, name DEBUG/INFO/WARNING/ERROR/CRITICAL, abbreviation DBG/INF/WAR/ERR/CRI override `ValueError` |
-| Useful methods | `register_level('TRACE', value=5, ...)` → Dynamically add `logger.trace()` method to `DSafeLogger` class. Skip if it conflicts with an existing method name |
+| Useful methods | `RegisterLevel('TRACE', value=5, ...)` → Dynamically add `logger.trace()` method to `DSafeLogger` class. Skip if it conflicts with an existing method name |
 | Alignment with 3-tier pipeline | Custom level names now available in all layers of arguments/INI/environment variables |
 | spawn re-import | re-registering the same definition (name/value/abbreviation/color exact match) is an idempotent no-op. Unmatched re-registration is `RuntimeError` |
 ---
@@ -747,7 +747,7 @@ Detailed design document §12 stipulates.
 - ANSI color codes are assigned to abbreviated display level values.
 - Do not modify `record.levelname` directly (comply with §9.7 Non-destructive handling).
 - For Windows, enable VT100 with `os.system("")` during initialization.
-- `COLOR_MAP` also integrates `register_level()` registered custom level color as an instance variable.
+- `COLOR_MAP` also integrates `RegisterLevel()` registered custom level color as an instance variable.
 - Color control priority (§4.5):
   1. `NO_COLOR` Settings → Forced Disable
   2. `{prefix}_COLOR` setting → Follow that value
@@ -1142,7 +1142,7 @@ As specified in Design Document §10.1, `ConfigureLogger()` has 26 arguments, bu
 | API | Role | Timing |
 |---|---|---|
 | `contextualize(**kwargs)` | Automatically assigns an identifier to the log in a thread/asyncio task | Any scope |
-| `register_level(name, value, abbreviation, color)` | Registering a custom log level | Before `ConfigureLogger()` |
+| `RegisterLevel(name, value, abbreviation, color)` | Registering a custom log level | Before `ConfigureLogger()` |
 | `ReopenLogFiles()` | Re-open after external log rotation | Any |
 All of these are optional and ``if you don't use them, they don't exist'' by design (Design document §9.9/§15a).
 #### 3.1.3 multiprocess entrance
@@ -1499,7 +1499,7 @@ This is consistent with the "What Not To Claim" section of the README (BENCHMARK
 #### 3.8.4 Advance guidance for Windows spawn rules
 Design document §11.12 and `examples/12_multiprocess_logging.md`:
 - `mp_context=None` is left to Python's default context (library does not make its own fallback based on OS determination)
-- In spawn worker bootstrap, `register_level()` at the top level of the module may be re-executed, and **re-registration of the same definition is allowed as an idempotent no-op** (Design document §10.3 spawn worker re-import rule)
+- In spawn worker bootstrap, `RegisterLevel()` at the top level of the module may be re-executed, and **re-registration of the same definition is allowed as an idempotent no-op** (Design document §10.3 spawn worker re-import rule)
 - `examples/12_multiprocess_logging.md` presents `if __name__ == "__main__":` guard and `mp_context=multiprocessing.get_context("spawn")` manifestation as a guide for Windows
 ---
 
@@ -1585,7 +1585,7 @@ The "Writer does not guarantee" list in `examples/12_multiprocess_logging.md` Se
 ### 3.13 Usability summary
 The materials reviewed in this chapter can be summarized as follows.
 1. **Minimum startup code is 3 lines**: `ConfigureLogger(log_path=..., pg_name=...)` + `GetLogger(__name__)` + `logger.info(...)`. This is made explicit in both the README "Quick Start" section and `examples/01_quick_start.md`.
-2. **There are two functions at the entrance to the public API**: Typical usage is completed with `ConfigureLogger()` and `GetLogger()`. The auxiliary API (`contextualize` / `register_level` / `ReopenLogFiles`) is optional and "doesn't exist if you don't use it" model.
+2. **There are two functions at the entrance to the public API**: Typical usage is completed with `ConfigureLogger()` and `GetLogger()`. The auxiliary API (`contextualize` / `RegisterLevel` / `ReopenLogFiles`) is optional and "doesn't exist if you don't use it" model.
 3. **All 26 arguments have default values**: Design document §10.1. Minimal startup and production audit operations are expressed in the same API parameter space.
 4. **stdlib migration is call-site invariant**: All three `examples/03_migration_from_stdlib.md` patterns reduce the number of setup code lines by 50–60% and do not change the `logger.info()` call site.
 5. **3-layer pipeline supports change subject**: Correspondence between argument (developer) / INI or dict (DevOps) / environment variable (operator) is clearly specified in `examples/02_configuration_guide.md`.
@@ -1680,7 +1680,7 @@ Design documents §9.1 and §2:
 | `routing_mode='size'` and `max_bytes <= 0` | `ValueError` and Fail-Fast | §7.6.6 |
 | `routing_mode='count'` and `max_lines <= 0` | `ValueError` and Fail-Fast | §7.6.6 |
 | Custom level name conflicts with built-in | Rejected with `ValueError` | §9.9.3 |
-| Call `register_level()` after `ConfigureLogger()` | `RuntimeError` | §9.9.2 |
+| Call `RegisterLevel()` after `ConfigureLogger()` | `RuntimeError` | §9.9.2 |
 | Non-string value for `config_dict` (directly specified int/bool) | Fail-Fast with `TypeError` | §5.7.1 |
 | Environment variable `{prefix}_IPC_LOG_TIMEOUT` cannot be interpreted as float (v23h) | `ValueError` | §11.16.1 |
 | Environment variables `{prefix}_IPC_LOG_QUEUE_MAXSIZE` / `IPC_CLIENT_QUEUE_MAXSIZE` cannot be interpreted as int | `ValueError` | §11.16.1 |
@@ -2003,7 +2003,7 @@ Locally resolve within Formatter without using `addLevelName()` (§4.9.1), start
 ### 4.11 Summary of security aspects
 The materials reviewed in this chapter can be summarized as follows.
 1. **Zero runtime external dependencies are clearly stated as an ``absolute condition''**: Design document §1 declares ``achieved with zero external dependencies'' as an absolute condition, and the Vendor-Agnostic principle (§2) structurally excludes vendor imports from core modules. There are no third-party dependencies that an attacker could pass through in the supply chain.
-2. **At least 16 items are verified at startup**: log_path / module-specific path / manifest_path permissions, INI type conversion, INI section rules, `config_file`/`config_dict` exclusive, routing_mode different threshold, custom level name collision, `register_level()` calling order, interpretability of each environment variable (fail-fast in v23h) verification) is verified at startup, and if invalid, startup is stopped with an exception.
+2. **At least 16 items are verified at startup**: log_path / module-specific path / manifest_path permissions, INI type conversion, INI section rules, `config_file`/`config_dict` exclusive, routing_mode different threshold, custom level name collision, `RegisterLevel()` calling order, interpretability of each environment variable (fail-fast in v23h) verification) is verified at startup, and if invalid, startup is stopped with an exception.
 3. **`diagnose` is protected by only environment variables, only `"1"`, and triple guard**: ``Inadvertent introduction into production'' is structurally eliminated by three layers: code path (no argument), configuration file path (ignored even if written in INI), and truth value representation fluctuation (`"true"`, etc. are invalid).
 4. **`sens_kws` / `sens_kws_replace` are also blocked from setting from environment variables as a similar sanctuary**: This is clearly stated as a design decision to prevent unintentional changes to sensitive keywords (clarification in §3.4 v20).
 5. **12 built-in keywords for masking**: `password` / `passwd` / `pass` / `secret` / `token` / `key` / `api_key` / `apikey` / `auth` / `credential` / `private` / `cert` (Design document §9.4). Match by partial match (case does not matter).
@@ -2046,7 +2046,7 @@ This chapter covers the major features of v23k **individually** and organizes ea
 | 5.4 | File Integrity Verification (SHA-256/Manifest) |
 | 5.5 | Structured logging and per-sink Formatter configuration |
 | 5.6 | Contextualize / FrozenContext |
-| 5.7 | Custom log level (register_level) |
+| 5.7 | Custom log level (RegisterLevel) |
 | 5.8 | Console color output |
 | 5.9 | async transport (QueueTransport) |
 | 5.10 | 5 State Life Cycle |
@@ -2310,7 +2310,7 @@ Design document §6.1:
 ```
 
 - Date and time format: `%Y-%m-%d %H:%M:%S`
-- Level name abbreviation: `DBG` / `INF` / `WAR` / `ERR` / `CRI` (and `register_level()` 3-letter abbreviation of registered custom level)
+- Level name abbreviation: `DBG` / `INF` / `WAR` / `ERR` / `CRI` (and `RegisterLevel()` 3-letter abbreviation of registered custom level)
 - Contextualize information is added to the end of the message in `[task_id:42 worker:db_sync]` format
 #### 5.5.2 Structured logs (JSON Lines)
 Design document §6.4: Switch to 1 line per JSON in `ConfigureLogger(structured=True)`. Since it is **completely orthogonal** to the Append-Only architecture, routing and generation management will continue to operate without any changes.
@@ -2414,11 +2414,11 @@ Design document §11.8.2:
 - When combined with structured=True, the context field appears at the JSON top level.
 ---
 
-### 5.7 Custom Log Level (register_level)
+### 5.7 Custom Log Level (RegisterLevel)
 #### 5.7.1 Functional specifications
 Design document §9.9:
 ```python
-register_level(name='TRACE', value=5, abbreviation='TRC', color='\033[90m')
+RegisterLevel(name='TRACE', value=5, abbreviation='TRC', color='\033[90m')
 ```
 
 - `name`: Level name (e.g. TRACE)
@@ -2428,36 +2428,36 @@ register_level(name='TRACE', value=5, abbreviation='TRC', color='\033[90m')
 #### 5.7.2 Forcing Calling Order
 Design document §9.9.2:
 ```text
-register_level() ← Any number of times (even 0 times)
+RegisterLevel() ← Any number of times (even 0 times)
      ↓
 ConfigureLogger() ← Only once
      ↓
 GetLogger() ← Any number of times
 ```
 
-`register_level()` after `ConfigureLogger()` is `RuntimeError`. The `shutting_down` state is similarly rejected (because additional registration during terminating would destabilize the shared state).
+`RegisterLevel()` after `ConfigureLogger()` is `RuntimeError`. The `shutting_down` state is similarly rejected (because additional registration during terminating would destabilize the shared state).
 #### 5.7.3 Built-in level of protection
 Design document §9.9.3: All of the following operations are rejected as `ValueError`:
 - Override built-in values (10, 20, 30, 40, 50)
 - Override built-in names (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 - Override built-in abbreviations (DBG, INF, WAR, ERR, CRI)
 #### 5.7.4 3-layer pipeline alignment with all layers
-Design document §9.9.4: After `register_level('TRACE', ...)`, `'TRACE'` is available in all layers:
+Design document §9.9.4: After `RegisterLevel('TRACE', ...)`, `'TRACE'` is available in all layers:
 - Argument: `ConfigureLogger(default_level='TRACE', ...)`
 - INI: `level = TRACE` of `default_level = TRACE` or `[dsafelogger:mod]`
 - Environment variable: `D_LOG_LEVEL=TRACE` or `D_LOG_MODULES=mymod:TRACE`
 If an unregistered level name is specified, Fail-Fast validation will result in `ValueError`.
 #### 5.7.5 Dynamic generation of convenience methods
 Design document §9.9.5:
-- `logger.trace(msg)` method is dynamically added to `register_level('TRACE', value=5, ...)` → `DSafeLogger`
+- `logger.trace(msg)` method is dynamically added to `RegisterLevel('TRACE', value=5, ...)` → `DSafeLogger`
 - Skip adding a convenient method if it conflicts with an existing method name (`logger.info()`, etc.) (`logger.log(value, msg)` can be used)
 - Since a type error occurs in mypy / pyright, the use of `logger.log(VALUE, msg)` or the assignment of `# type: ignore[attr-defined]` is described in the documentation.
 #### 5.7.6 Re-import rules for spawn workers
 Design document §10.3:
-- spawn worker bootstrap may re-execute module top-level `register_level()`
+- spawn worker bootstrap may re-execute module top-level `RegisterLevel()`
 - Re-registration of **same definition** (exact match of name / value / abbreviation / color) is allowed as **idempotent no-op**
 - **Unmatched re-registration** is considered registry divergence `RuntimeError`
-This allows the normal writing style of writing `register_level()` at the module top level to be maintained in the spawn environment.
+This allows the normal writing style of writing `RegisterLevel()` at the module top level to be maintained in the spawn environment.
 #### 5.7.7 multiprocess registry hash matching
 Design document §11.7: Registry hash (SHA-256) is included in `ctx` and checked at Writer bootstrap ready ACK and when `AttachCurrentProcess(ctx)` is executed. Mismatch is Fail-Fast with `RuntimeError`.
 #### 5.7.8 Functional Observation
@@ -2483,7 +2483,7 @@ Design document §9.6 / §5.3:
 Design document §9.6:
 ```text
 (1) Built-in default
-  → (2) register_level() Specified color
+  → (2) RegisterLevel() Specified color
     → (3) INI/Dictionary color_{abbreviation} key (final override)
 ```
 
@@ -2602,7 +2602,7 @@ Design document §9.2:
 - Exception handling in `configuring`: `try/finally` prevents `_configure_state` from remaining as `configuring`.
 - `GetLogger` in `configuring`: Waiting until initialization is completed in another thread, short-circuiting by returning existing logger only when re-entering the same thread.
 - `ConfigureLogger` in `shutting_down`: No new initialization, No-Op or explicit rejection.
-- `register_level()` in `shutting_down`: `RuntimeError`.
+- `RegisterLevel()` in `shutting_down`: `RuntimeError`.
 #### 5.10.4 v21 Revised
 Design document §2 v21 revised:
 - Execute the entire `_do_configure()` of `ConfigureLogger` under `_lifecycle_lock` retention.
@@ -3071,8 +3071,8 @@ The materials reviewed in this chapter can be summarized as follows.
 11. **Formatter has 4 variants + per-sink configuration**: `DSafeFormatter` / `StructuredFormatter` / `DiagnosticFormatter` / `DiagnosticStructuredFormatter`, plus `file_fmt` / `console_fmt`. In the multiprocess version, the allow-list representation is normalized to a `kind + constructor args` specification.
 12. **`structured=True` and `fmt`/`file_fmt`/`console_fmt` string specifications are exclusive**: `ValueError` when specified simultaneously (avoids semantic conflict due to double implementation of the same function).
 13. **`contextualize()` is O(1) pass-by-reference based on `MappingProxyType`**: mutable values ​​fail-fast reject. `hasattr` base fallback aligns with `_ds_context` residency convention at IPC boundaries.
-14. **`register_level()` is limited before `ConfigureLogger`, built-in 5 stages are inviolable**: identical definition of spawn re-import is idempotent no-op, mismatch is `RuntimeError`.
-15. **Color palette is for INI/dict only (cannot be set with environment variables/arguments)**: Merge order is in 3 stages: `built-in → register_level → INI`. For `color_{abbreviation}`, unknown abbreviations and illegal characters in the key produce warning + skip.
+14. **`RegisterLevel()` is limited before `ConfigureLogger`, built-in 5 stages are inviolable**: identical definition of spawn re-import is idempotent no-op, mismatch is `RuntimeError`.
+15. **Color palette is for INI/dict only (cannot be set with environment variables/arguments)**: Merge order is in 3 stages: `built-in → RegisterLevel → INI`. For `color_{abbreviation}`, unknown abbreviations and illegal characters in the key produce warning + skip.
 16. **Semantics of `is_async=True` applies consistently to root and module-specific path (v21)**: All Transports are structurally stopped at `Pipeline.module_transports`.
 17. **5 State Life Cycle + `RLock`**: `unconfigured` / `auto` / `explicit` / `configuring` / `shutting_down`. Rollback in case of exception is guaranteed with `try/finally`.
 18. **`dsafelogger.mp` maintains Capture / Transport / Sink 3 layers**: There is a written rule that does not re-execute Capture semantics (logger layer evaluation, level judgment, `f_locals` collection) on the Writer side.
@@ -3091,7 +3091,7 @@ The materials reviewed in this chapter can be summarized as follows.
 ### 5.23 Summary of this chapter
 D-SafeLogger v23k features can be organized into five feature categories:
 1. **File I/O system**: 9 types of Append-Only routing / generation management + archive / external rotation coexistence / SHA-256 integrity verification. Architecturally avoids Windows file locking issues and integrates with audit workflows with `sha256sum -c` compatibility.
-2. **Log generation/display system**: 4 Formatter variants / `file_fmt` / `console_fmt` per-sink configuration / `contextualize` (FrozenContext) / `register_level` / color palette / diagnose / sens_kws masking. `LogRecord` maintains stdlib compatibility through non-destructive handling and display proxies.
+2. **Log generation/display system**: 4 Formatter variants / `file_fmt` / `console_fmt` per-sink configuration / `contextualize` (FrozenContext) / `RegisterLevel` / color palette / diagnose / sens_kws masking. `LogRecord` maintains stdlib compatibility through non-destructive handling and display proxies.
 3. **Concurrent/asynchronous system**: `is_async` (QueueTransport) / 5-state life cycle / free-threaded support / start empty Context of internal thread / `_lifecycle_lock` (RLock). Protect shared state with GIL-independent explicit locks.
 4. **Multiprocess system**: Writer runtime / `ctx` bootstrap / log plane and control plane / classified delivery-state counters / six `writer_reject` subcategories / bounded shutdown / flush strategy / TrackedQueue / registry hash matching / active client registry. Silent loss is structurally disallowed.
 5. **Configuration/operation system**: 3-layer pipeline (env > INI/dict > arguments) / 13 types of environment variables / `NO_COLOR` industry standard / CLI 3 commands (`init` / `ls` / `tail -f`) / 13 types of examples. Assign a layer to each subject of change, and use the CLI to supplement the operation of the Append-Only model.
@@ -3868,7 +3868,7 @@ Facts that can be confirmed from `pyproject.toml` and `MANIFEST.in`:
 - Operation guide: `TESTING.md` / `BENCHMARK.md` / `CONTRIBUTING.md` / `CHANGELOG.md`
 #### 7.10.3 Quality Gate
 `TESTING.md` and public validation procedures:
-- v23k local validation on Python 3.14.3 / Windows: **714 passed, 3 skipped** (717 collected, `uv run pytest tests -v`)
+- v23k local validation on Python 3.14.3 / Windows: **723 passed, 7 skipped** (730 collected, `uv run pytest tests -v`)
 - The skipped count is platform-dependent because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
 - Coverage: terminal total **87%**, XML line-rate **88.97%**, branch-rate **81.46%**
 - multiprocess tests / OTel/structlog coexistence tests are included in the official quality gate
@@ -3936,7 +3936,7 @@ The observed facts referenced in this chapter can be summarized as follows. This
 7. **International-market perspective**: Trend in early adoption of PEP 703 / Supply chain regulatory requirements such as Executive Order 14028 / Large-scale microservice configuration. examples / README English, Apache 2.0, zero dependencies are supported.
 8. **The design purpose is clearly not “wide dissemination”**: §1 of the design document declares that the “top priority is to operate as a common foundation for the D ecosystem rather than to pursue wide adoption.” This reflects a design stance that prioritizes fit for organizations with specific operational requirements.
 9. **Document operations that actively specify failure boundaries**: Threat Model of `examples/08_compliance_audit.md` / Writer does not guarantee of `examples/12_multiprocess_logging.md` / What Not To Claim of `BENCHMARK.md` / HMAC out-of-scope declaration in design document §7.6.7 / remote aggregation out-of-scope declaration in design document §11.2. These are consistent with the operational stance of ``preventing misuse due to excessive expectations.''
-10. **Quality gate transparency**: 714 passed / 3 skipped on Python 3.14.3 / Windows (717 collected), coverage 87% terminal, free-threaded build test procedure, internal synchronization verification by `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`, benchmark session fixation by `benchmarks/summary/manifest.json`. The skipped count can vary by OS. These are recorded as observable quality indicators when evaluating candidate libraries for introduction.
+10. **Quality gate transparency**: 723 passed / 7 skipped on Python 3.14.3 / Windows (730 collected), coverage 87% terminal, free-threaded build test procedure, internal synchronization verification by `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`, benchmark session fixation by `benchmarks/summary/manifest.json`. The skipped count can vary by OS. These are recorded as observable quality indicators when evaluating candidate libraries for introduction.
 11. **Clear distribution structure**: The wheel contains runtime package files only and includes `py.typed`. The sdist includes docs / examples / tests / benchmark summaries / selected benchmark summaries for public validation and reproducibility. Private planning materials and temporary working files are excluded.
 12. **Relationship with competitors is not competition but separation of responsibilities**: structlog (front end) / OTel (emission) / Loguru (DX replacement) / picologging (speed differentiation) / logfire (SaaS) / Eliot (causal) have different responsibility axes and coexist or run in parallel with this library. Popularity indicators such as Loguru's 23.9k stars are a context independent of comparison of design dimensions.
 ---
@@ -4132,7 +4132,7 @@ Boundaries that public bench analysis actively enumerates:
 | API | `docs/api/dsafelogger*.md` | Automatically generated |
 | Operation | `TESTING.md` / `BENCHMARK.md` / `CONTRIBUTING.md` / `CHANGELOG.md` | — |
 #### 8.7.2 Quality Gate
-- Official test baseline: 714 passed / 3 skipped (717 collected, `uv run pytest tests -v`, Python 3.14.3 / Windows). The skipped count can vary by OS because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
+- Official test baseline: 723 passed / 7 skipped (730 collected, `uv run pytest tests -v`, Python 3.14.3 / Windows). The skipped count can vary by OS because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
 - Coverage: terminal total 87%, XML line-rate 88.97%, branch-rate 81.46%
 - multiprocess tests / OTel/structlog coexistence tests are included in the official quality gate
 - Type validation: public validation includes `mypy src`, `pyright src`, `pyright tests/typing_smoke`, and a 100% `pyright --verifytypes dsafelogger --ignoreexternal` completeness gate against the built wheel
@@ -4170,7 +4170,7 @@ Based on the observed facts in this report as a whole, we have summarized the ob
 8. **Multiprocess raw throughput is led by stdlib logging**: In `root_p8`, D-SafeLogger reaches 63-75% of stdlib throughput. `BENCHMARK.md` states this clearly as a design tradeoff reflecting fixed costs in the specification (IPC + Writer dispatch). The multiprocess value of this library is not raw throughput, but delivery-state observability.
 9. **Classifies and explains 12/12 rows in the multiprocess resilience profile**: stdlib / loguru rows are marked with `observability_gap`. Delivery-state explainability is recorded as observability specific to this library.
 #### 8.8.5 Documentation/quality operations
-10. **Quality gate and internal synchronization verification scripts are in place**: 714 passed / 3 skipped on Python 3.14.3 / Windows (717 collected), coverage 87%, `mypy` / `pyright` / typing smoke / `pyright --verifytypes` 100% completeness gate, internal synchronization verification by `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`, public representative session fixation by `benchmarks/summary/manifest.json`. The skipped count can vary by OS. These are recorded as observable quality indicators when evaluating candidate libraries for introduction.
+10. **Quality gate and internal synchronization verification scripts are in place**: 723 passed / 7 skipped on Python 3.14.3 / Windows (730 collected), coverage 87%, `mypy` / `pyright` / typing smoke / `pyright --verifytypes` 100% completeness gate, internal synchronization verification by `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`, public representative session fixation by `benchmarks/summary/manifest.json`. The skipped count can vary by OS. These are recorded as observable quality indicators when evaluating candidate libraries for introduction.
 ---
 
 ### 8.9 Summary of this chapter

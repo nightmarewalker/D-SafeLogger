@@ -38,9 +38,9 @@ Return valid level names for validation.
 
 Dynamically add convenience methods for custom levels.
 
-Example: register_level('TRACE', 5, 'TRC') → logger.trace(msg, ...)
+Example: RegisterLevel('TRACE', 5, 'TRC') -> logger.trace(msg, ...)
 
-### `register_level(name: 'str', value: 'int', abbreviation: 'str', color: 'str' = '') -> 'None'`
+### `register_custom_level(name: 'str', value: 'int', abbreviation: 'str', color: 'str' = '') -> 'None'`
 
 Register a custom log level.
 

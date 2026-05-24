@@ -133,8 +133,8 @@ class TestDSafeFormatterStylesAndImmutability:
 
     def test_custom_level_levelname_immutable(self):
         """UT-FMT-014: custom level record.levelname is not mutated by format()."""
-        from dsafelogger import register_level
-        register_level('VERBOSE', 15, 'VRB', '\033[35m')
+        from dsafelogger import RegisterLevel
+        RegisterLevel('VERBOSE', 15, 'VRB', '\033[35m')
         fmt = DSafeFormatter(fmt='%(levelname)s %(message)s')
         record = _make_record(level=15)
         original = record.levelname

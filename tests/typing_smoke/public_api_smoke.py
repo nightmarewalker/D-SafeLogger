@@ -12,7 +12,7 @@ process.
 """
 from __future__ import annotations
 
-from dsafelogger import ConfigureLogger, GetLogger
+from dsafelogger import ConfigureLogger, GetLogger, RegisterLevel, SafeShutdown
 
 
 def smoke_basic_logger() -> None:
@@ -20,6 +20,14 @@ def smoke_basic_logger() -> None:
     logger = GetLogger("typing-smoke")
     logger.info("hello")
     logger.warning("warn")
+
+
+def smoke_custom_level() -> None:
+    RegisterLevel("TRACE", 5, "TRC")
+
+
+def smoke_safe_shutdown() -> None:
+    SafeShutdown()
 
 
 def smoke_contextualize() -> None:

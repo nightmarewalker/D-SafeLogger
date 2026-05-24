@@ -111,15 +111,15 @@ In most cases, extending the default list is safer.
 Register fine-grained levels to control verbosity without code changes:
 
 ```python
-from dsafelogger import ConfigureLogger, GetLogger, register_level
+from dsafelogger import ConfigureLogger, GetLogger, RegisterLevel
 
 # TRACE below DEBUG — extremely verbose, off by default
-register_level('TRACE', 5, 'TRC', '\033[90m')
+RegisterLevel('TRACE', 5, 'TRC', '\033[90m')
 
 # AUDIT above WARNING — always visible in normal operation
-register_level('AUDIT', 35, 'AUD', '\033[95m')
+RegisterLevel('AUDIT', 35, 'AUD', '\033[95m')
 
-# register_level must be called BEFORE ConfigureLogger
+# RegisterLevel must be called BEFORE ConfigureLogger
 ConfigureLogger(
     log_path='./logs', pg_name='MyApp',
     default_level='INFO',
@@ -176,10 +176,10 @@ Save this as `debug_demo.py`:
 """Demonstrates diagnostic mode with sensitive masking and custom levels."""
 
 import os
-from dsafelogger import ConfigureLogger, GetLogger, register_level
+from dsafelogger import ConfigureLogger, GetLogger, RegisterLevel
 
 # Register TRACE level before ConfigureLogger
-register_level('TRACE', 5, 'TRC', '\033[90m')
+RegisterLevel('TRACE', 5, 'TRC', '\033[90m')
 
 ConfigureLogger(
     log_path='./logs', pg_name='DebugDemo',

@@ -63,7 +63,7 @@ The tested scenario for this guide is maintained in
 import json
 from pathlib import Path
 
-from dsafelogger import ConfigureLogger, GetLogger, _shutdown
+from dsafelogger import ConfigureLogger, GetLogger, SafeShutdown
 
 
 def main() -> None:
@@ -83,7 +83,7 @@ def main() -> None:
         extra={"container_id": "local-dev", "operation": "startup"},
     )
 
-    _shutdown()
+    SafeShutdown()
     print(f"collector can tail: {log_dir / 'ContainerAudit.log'}")
 
 
@@ -98,6 +98,23 @@ if __name__ == "__main__":
 - Keep collector retry, authentication, and remote delivery policy outside
   D-SafeLogger.
 
+## Cloud logging note
+
+For cloud platforms (Google Cloud Logging, AWS CloudWatch, Datadog, etc.),
+prefer the ownership models described in
+[Cloud Logging Coexistence](22_cloud_logging_coexistence.md). In short:
+
+1. **Collector tail**: D-SafeLogger writes local JSON Lines files, and a
+   collector/agent (Fluent Bit, Vector, Filebeat, Cloud Logging agent) tails
+   them for remote delivery.
+
+2. **Handler split**: A cloud logging handler owns stdout/remote delivery,
+   while D-SafeLogger keeps local durable files as evidence.
+
+This guide does not test remote cloud delivery. Authentication, retry, quota,
+and backend ingestion are owned by the cloud SDK, agent, or collector, not by
+D-SafeLogger.
+
 ## Boundaries
 
 D-SafeLogger is not a log shipper, metrics backend, tracing backend, SIEM, or
@@ -107,4 +124,3 @@ access-control system. It can feed those systems by producing safe local files.
 
 - [OpenTelemetry Logging Correlation](15_opentelemetry_logging.md)
 - [Using D-SafeLogger with structlog](16_structlog_coexistence.md)
-

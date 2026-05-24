@@ -176,11 +176,11 @@ cat logs/*.log | jq -r '.timestamp[:10]' | sort | uniq -c
 Create a dedicated AUDIT level so audit events are never silenced by global level changes:
 
 ```python
-from dsafelogger import ConfigureLogger, GetLogger, register_level
+from dsafelogger import ConfigureLogger, GetLogger, RegisterLevel
 
 # AUDIT sits between WARNING (30) and ERROR (40)
 # Even if default_level is WARNING, AUDIT events still appear.
-register_level('AUDIT', 35, 'AUD', '\033[95m')
+RegisterLevel('AUDIT', 35, 'AUD', '\033[95m')
 
 ConfigureLogger(
     log_path='./logs', pg_name='AuditService',
@@ -211,10 +211,10 @@ Save this as `audit_demo.py`:
 ```python
 """Demonstrates compliance-grade audit logging with integrity verification."""
 
-from dsafelogger import ConfigureLogger, GetLogger, register_level
+from dsafelogger import ConfigureLogger, GetLogger, RegisterLevel
 
 # Register a custom AUDIT level before ConfigureLogger
-register_level('AUDIT', 35, 'AUD', '\033[95m')
+RegisterLevel('AUDIT', 35, 'AUD', '\033[95m')
 
 ConfigureLogger(
     log_path='./logs',

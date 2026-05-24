@@ -29,8 +29,8 @@ uv run pytest tests -v
 Current v23k local validation on Python 3.14.3 / Windows:
 
 ```text
-714 passed, 3 skipped
-717 collected
+723 passed, 7 skipped
+730 collected
 ```
 
 The collected test count is the baseline. The number of skipped tests is platform-dependent because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
@@ -46,6 +46,27 @@ XML branch-rate: 81.46%
 `coverage.xml`, `.coverage`, and `htmlcov/` are local/CI artifacts and are ignored by `.gitignore`; keep coverage numbers in documentation, not the generated files themselves.
 
 OpenTelemetry and structlog coexistence tests are part of the official full test run. They are not skipped silently when the official `dev` dependency group is installed.
+
+Examples 18-20 use optional ecosystem packages (`tqdm`, Rich, and Sentry SDK).
+They are skipped by `pytest.importorskip` in a dev-only environment and are
+officially guaranteed by the dedicated examples dependency group:
+
+```bash
+uv sync --group dev --group examples
+uv run pytest tests/examples/test_18_console_progress_coexistence.py tests/examples/test_19_sentry_coexistence.py tests/examples/test_20_testing_and_warnings.py -v
+```
+
+The Qt GUI example is optional and has a separate dependency group because
+PySide6 is large and GUI event-loop support is platform-sensitive:
+
+```bash
+uv sync --group dev --group gui
+uv run pytest tests/examples/test_23_gui_logging_qt.py -v --timeout=30
+```
+
+Example 22 is docs-only. Remote cloud delivery depends on credentials,
+network access, quota state, and backend ingestion, so it is documented with
+`<!-- example-test: docs-only; ... -->` markers instead of a pytest module.
 
 ## Concise Local Run
 
@@ -236,6 +257,18 @@ GitHub Actions also runs a free-threaded compatibility job on Ubuntu:
 
 - Python: 3.13t, 3.14t
 - Environment: `PYTHON_GIL=0`
+
+GitHub Actions also runs an examples coexistence job on Ubuntu and Windows:
+
+- Dependencies: `uv sync --group dev --group examples`
+- Scope: `tests/examples/test_18_console_progress_coexistence.py`, `test_19_sentry_coexistence.py`, and `test_20_testing_and_warnings.py`
+
+Optional GUI tests run in a separate workflow:
+
+- Trigger: weekly schedule, manual dispatch, or pull requests touching the GUI example/test/workflow/dependency files
+- Dependencies: `uv sync --group dev --group gui`
+- Scope: `tests/examples/test_23_gui_logging_qt.py`
+- Policy: Ubuntu must pass; Windows is allow-failure
 
 See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 

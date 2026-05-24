@@ -39,7 +39,7 @@ The target Python version is **3.11 or later**. The design assumes `X | Y` style
 * **Console color palette settings:**
   Console colors (ANSI color codes) for the five built-in levels and custom levels can be changed with `color_{abbreviation}` keys in the `[global]` section of the INI/dictionary. This enables color customization for terminal environments and visual requirements without code changes. This setting is intentionally supported only in the second layer (INI/dictionary), not through environment variables or function arguments.
 * **Custom Log Levels:**
-  `register_level()` allows you to insert a custom log level at any numerical position in addition to the standard 5 levels (DEBUG/INFO/WARNING/ERROR/CRITICAL). Complete bulk registration of 3-letter abbreviations, ANSI colors, and convenient methods with a single call before `ConfigureLogger`. The built-in 5 stages are protected as inviolable and are fully aligned with the 3-tier configuration management pipeline.
+  `RegisterLevel()` allows you to insert a custom log level at any numerical position in addition to the standard 5 levels (DEBUG/INFO/WARNING/ERROR/CRITICAL). Complete bulk registration of 3-letter abbreviations, ANSI colors, and convenient methods with a single call before `ConfigureLogger`. The built-in 5 stages are protected as inviolable and are fully aligned with the 3-tier configuration management pipeline.
 * **File Integrity Verification:**
   Automatically generates a SHA-256 hash of the write-completed file when switching files by routing. Achieves tampering detection, transfer verification, and file loss detection using a `sha256sum -c` compatible sidecar file and a manifest with a timestamp. Hash calculations are performed in a separate thread and do not block I/O on the main thread.
 * **Safe Shutdown:**
@@ -207,7 +207,7 @@ All control environment variables follow the naming convention based on `Configu
 
 Specify only the global default level. Module specific syntax is not accepted.
 
-- Valid values: In addition to `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` (case does not matter), custom level names registered with `register_level()` can also be used.
+- Valid values: In addition to `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` (case does not matter), custom level names registered with `RegisterLevel()` can also be used.
 - Override the `default_level` and ConfigureLogger `default_level` arguments in the INI file
 
 **Design decision: Reason for limitation to global use**
@@ -233,7 +233,7 @@ D_LOG_MODULES=myapp.db:DEBUG,myapp.api:ERROR:/var/log/api.log
 - Override module-specific section settings in INI files
 - evaluated independently from the global level of `{prefix}_LEVEL`
 - Only specified fields (level, path) override INI values, INI-side routing details (routing_mode, max_bytes, etc.) remain unaffected.
-- In addition to the 5 built-in level names, you can also use custom level names registered with `register_level()`
+- In addition to the 5 built-in level names, you can also use custom level names registered with `RegisterLevel()`
 - If an individual `MOD_SPEC` has a format violation (e.g. missing a colon), only that element will be skipped with a warning output to stderr, and other normal elements will continue to be applied.
 
 #### 4.3.1. Specify only level (`MOD:LEVEL`)
@@ -458,14 +458,14 @@ One-to-one correspondence with ConfigureLogger arguments. `config_file` itself i
 | `manifest_path` | `manifest_path` | str | Default/empty value is None (sidecar only) |
 | `sens_kws` | `sens_kws` | str (CSV) | Specify sensitive keywords separated by commas (e.g. `my_secret, api_token`). Added to built-in keywords |
 | `sens_kws_replace` | `sens_kws_replace` | bool | `true`, completely replace the built-in keyword with `sens_kws`. In addition to `true`/`false`, `1`/`0`/`yes`/`no`/`on`/`off` are also allowed |
-| `color_{abbreviation}` | — | str | The numeric part of the ANSI SGR parameter (for example, `36`, `1;31`, `38;5;208`). `color_dbg`, `color_inf`, `color_war`, `color_err`, `color_cri` are built in. Custom level abbreviations registered with `register_level()` can also be used. This cannot be configured from ConfigureLogger arguments or environment variables (Layer 2 only). An empty string disables coloring for the corresponding level |
+| `color_{abbreviation}` | — | str | The numeric part of the ANSI SGR parameter (for example, `36`, `1;31`, `38;5;208`). `color_dbg`, `color_inf`, `color_war`, `color_err`, `color_cri` are built in. Custom level abbreviations registered with `RegisterLevel()` can also be used. This cannot be configured from ConfigureLogger arguments or environment variables (Layer 2 only). An empty string disables coloring for the corresponding level |
 | `diagnose` | — | **Invalid** | Ignored even if specified (protected area) |
 
 **Type conversion and validation**: For type conversion of string values read from INI files (converting `is_async` to bool, `max_bytes` to int, etc.) or formatting violations, immediately throw an exception and stop startup (Fail-Fast) instead of falling back to the default value. Silent fallback to default values creates the most dangerous failure pattern: settings appear to be working even though they are not reflected.
 
 **Null value processing for optional keys**: If the value is an empty string like `max_count =` (null value), it is treated as the same as "key absent" (`None`). Null values ​​for optional format keys such as `fmt =` / `file_fmt =` / `console_fmt =` / `datefmt =` are similarly treated as "unspecified" and subject to normal fallback rules.
 
-**Handling of unknown keys**: If an unknown key is listed in the `[global]` section, that key will be ignored after outputting a warning to stderr. Unlike type conversion errors for existing valid keys, unknown keys are subject to notification of misconfiguration, but are not immediately disabled. However, keys with the `color_` prefix are recognized on a pattern basis, so they are not included in the fixed key list. The `color_` prefix key dynamically verifies whether the abbreviation part matches the built-in 5-level or custom-level abbreviation registered with `register_level()`, and if it is an unknown abbreviation, a warning is output to stderr and skipped (not Fail-Fast).
+**Handling of unknown keys**: If an unknown key is listed in the `[global]` section, that key will be ignored after outputting a warning to stderr. Unlike type conversion errors for existing valid keys, unknown keys are subject to notification of misconfiguration, but are not immediately disabled. However, keys with the `color_` prefix are recognized on a pattern basis, so they are not included in the fixed key list. The `color_` prefix key dynamically verifies whether the abbreviation part matches the built-in 5-level or custom-level abbreviation registered with `RegisterLevel()`, and if it is an unknown abbreviation, a warning is output to stderr and skipped (not Fail-Fast).
 
 **`color_{abbreviation}` key validation**: The following validations apply to keys with the `color_` prefix:
 * **Unknown abbreviation**: If the part after `color_` does not match a valid abbreviation (built-in + custom level), output a warning to stderr and ignore the key.
@@ -473,7 +473,7 @@ One-to-one correspondence with ConfigureLogger arguments. `config_file` itself i
 * **Empty string**: Enabled. Disable colorization for the corresponding level (output without color)
 * In any of the above cases, processing continues with warning + skip instead of Fail-Fast (throwing an exception). Application of other valid color settings is not prevented.
 
-**Custom level name validation**: The `default_level` and `level` keys in the module-specific section accept custom level names registered with `register_level()` in addition to the built-in 5 levels. If an unregistered level name is specified, `ValueError` is sent (Fail-Fast).
+**Custom level name validation**: The `default_level` and `level` keys in the module-specific section accept custom level names registered with `RegisterLevel()` in addition to the built-in 5 levels. If an unregistered level name is specified, `ValueError` is sent (Fail-Fast).
 
 **v23j: unified post-merge validation**: After Python API arguments, INI/config_dict, and environment variables are merged, the final file-sink configuration is validated again with the same rules. `structured=True` combined with `fmt` / `file_fmt` / `console_fmt`, unregistered `default_level`, `backup_count < 0`, `max_count < 1`, `suffix_digits < 1`, and `startup_interval` with `interval < 1` are `ValueError` regardless of where they were specified. Python API bool arguments (`is_async`, `archive_mode`, `console_out`, `structured`, `enable_hash`, `sens_kws_replace`) accept only actual `bool` values; string truthiness/falsiness is not interpreted at the API layer.
 
@@ -624,7 +624,7 @@ The following validations apply to `config_dict` (all Fail-Fast):
 The following unified format is output by default for both files and console (when enabled).
 `%(asctime)s.%(msecs)03d [%(levelname)-3s][%(filename)s:%(lineno)s:%(funcName)s] %(message)s`
 * **Date and time format**: ISO8601-like `%Y-%m-%d %H:%M:%S`
-* **Level name abbreviation**: In addition to the built-in `DBG`, `INF`, `WAR`, `ERR`, `CRI`, the 3-character abbreviation of the custom level registered with `register_level()` is also output in the same format.
+* **Level name abbreviation**: In addition to the built-in `DBG`, `INF`, `WAR`, `ERR`, `CRI`, the 3-character abbreviation of the custom level registered with `RegisterLevel()` is also output in the same format.
 * **Contextualize information**: Added to the end of the message in the format `[task_id:42 worker:db_sync]` (described later in the specification).
 
 ### 6.2. Custom log format override settings (fmt / datefmt)
@@ -1070,7 +1070,7 @@ If `manifest_path` is specified, the writability of that directory is also verif
   * `GetLogger` in `configuring` also **wait until initialization is completed in another thread**, and only re-entering the same thread is short-circuited by returning the existing logger.
   * `ConfigureLogger` in `shutting_down` does not perform new initialization and prevents state corruption with either No-Op or explicit rejection.
   * `GetLogger` in `shutting_down` may return an existing logger, but must not implicitly fire a new initialization.
-  * `register_level()` in `shutting_down` becomes `RuntimeError`.
+  * `RegisterLevel()` in `shutting_down` becomes `RuntimeError`.
 * **Standard compatibility and testing**: `DSafeLogger` is fully compatible with standard `logging.Logger`, so `pytest`'s `caplog` fixtures and built-in `SMTPHandler` etc. work as is.
 * **Free-threaded support principle**: Protect shared states such as `_configure_state`, `_active_pipeline`, `_active_workers`, `_custom_levels` with explicit locks. Do not rely on the existence of the GIL or the internal locks of `list` / `dict` as safety grounds.
 
@@ -1108,7 +1108,7 @@ If `manifest_path` is specified, the writability of that directory is also verif
 ### 9.6. Designing console color output and explicit output to stderr
 * Specify the default destination of console output as **`sys.stderr`**.
 * **[Implementation policy]**: ANSI color codes are assigned to abbreviated display level values. Coloring is resolved using the same local mapping/display proxy route as `DSafeFormatter` and does not directly change `record.levelname`. For Windows, include hacks such as enabling VT100 with `os.system("")` during initialization. The color code specified when registering the custom level is also automatically reflected (see §9.9).
-* **Color palette settings**: The built-in 5-level color palette can be changed using `color_{lowercase_abbreviation}` keys in the `[global]` section of the INI file or config_dict (see §5.3). The value specifies the numerical part of the ANSI SGR parameter (e.g. `36`, `1;31`, `38;5;208`). Custom level colors can also be overwritten using the same naming convention. This setting is supported only in the second layer (INI/dictionary), and settings from environment variables and arguments are intentionally not supported. The color palette merge order is: (1) built-in default → (2) color specified by `register_level()` → (3) `color_{abbreviation}` key in INI/dictionary (final override).
+* **Color palette settings**: The built-in 5-level color palette can be changed using `color_{lowercase_abbreviation}` keys in the `[global]` section of the INI file or config_dict (see §5.3). The value specifies the numerical part of the ANSI SGR parameter (e.g. `36`, `1;31`, `38;5;208`). Custom level colors can also be overwritten using the same naming convention. This setting is supported only in the second layer (INI/dictionary), and settings from environment variables and arguments are intentionally not supported. The color palette merge order is: (1) built-in default → (2) color specified by `RegisterLevel()` → (3) `color_{abbreviation}` key in INI/dictionary (final override).
 
 ### 9.7. Non-destructive handling of LogRecord (Formatter / Handler implementation guidelines)
 
@@ -1140,11 +1140,11 @@ Conversion of D-SafeLogger level name abbreviations (`DEBUG` → `DBG`, `INFO` �
 
 **[Implementation policy]**: `LEVEL_MAP` is not a class variable but an **instance variable**, and an integration map of the 5 built-in levels and the custom level is constructed when Formatter is initialized (using `get_all_level_map()` in §9.9). Similarly, `COLOR_MAP` of `ColorStreamHandler` also holds the integrated map as an instance variable. Ensures the same display semantics for each `%` / `{}` / `$` style allowed by `logging.Formatter`.
 
-> * However, `register_level()` calls `logging.addLevelName(value, name)` and registers the custom level numeric → name mapping in the standard `logging` module. This is a registration required for the normal operation of standard APIs such as `logger.log(value, msg)` and `isEnabledFor(value)`, and is different from abbreviation conversion (`INFO` → `INF`).
+> * However, `RegisterLevel()` calls `logging.addLevelName(value, name)` and registers the custom level numeric → name mapping in the standard `logging` module. This is a registration required for the normal operation of standard APIs such as `logger.log(value, msg)` and `isEnabledFor(value)`, and is different from abbreviation conversion (`INFO` → `INF`).
 
 ### 9.9. Custom Log Levels Specification
 
-The `register_level()` function allows you to insert a custom log level at any numerical position in addition to the standard 5 levels (DEBUG/INFO/WARNING/ERROR/CRITICAL). This feature is opt-in (no effect unless `register_level` is called), and if it is not used, it will maintain exactly the same behavior as v14.5.
+The `RegisterLevel()` function allows you to insert a custom log level at any numerical position in addition to the standard 5 levels (DEBUG/INFO/WARNING/ERROR/CRITICAL). This feature is opt-in (no effect unless `RegisterLevel` is called), and if it is not used, it will maintain exactly the same behavior as v14.5.
 
 #### 9.9.1. Design principles
 * Maintain consistency in D-SafeLogger three-letter abbreviation format (`DBG`, `INF`, etc.)
@@ -1161,13 +1161,13 @@ The `register_level()` function allows you to insert a custom log level at any n
 #### 9.9.2. Enforced call order
 
 ```
-register_level()    <- any number of times (including zero)
+RegisterLevel()    <- any number of times (including zero)
      ↓
 ConfigureLogger()   <- exactly once
      ↓
 GetLogger()         <- any number of times
 ```
-`register_level()` after `ConfigureLogger()` sends `RuntimeError`. This constraint structurally prevents Formatter/Handler/Validation from causing inconsistency after initialization.
+`RegisterLevel()` after `ConfigureLogger()` sends `RuntimeError`. This constraint structurally prevents Formatter/Handler/Validation from causing inconsistency after initialization.
 
 The `shutting_down` condition is also included in this prohibition. Additional registrations during termination processing will be explicitly rejected as they will destabilize the shared state.
 
@@ -1180,17 +1180,17 @@ All of the following operations are rejected as `ValueError`:
 
 #### 9.9.4. Alignment with 3-tier configuration management pipeline
 
-Custom level names registered with `register_level()` will be available to all layers of the 3-tier pipeline:
+Custom level names registered with `RegisterLevel()` will be available to all layers of the 3-tier pipeline:
 
 * **Third layer (arguments)**: `ConfigureLogger(default_level='TRACE', ...)` — Custom level names can be used
 * **Second layer (INI)**: `level = TRACE` of `default_level = TRACE` or `[dsafelogger:mod]` — valid if registered
 * **First layer (environment variables)**: `D_LOG_LEVEL=TRACE` or `D_LOG_MODULES=mymod:TRACE` — valid if registered
 
-If `TRACE` is specified in the INI file or environment variable without calling `register_level('TRACE', ...)` in the code, `ValueError` will be sent by the existing Fail-Fast validation because it is not included in the set of valid level names.
+If `TRACE` is specified in the INI file or environment variable without calling `RegisterLevel('TRACE', ...)` in the code, `ValueError` will be sent by the existing Fail-Fast validation because it is not included in the set of valid level names.
 
 #### 9.9.5. Dynamic generation of convenience methods
 
-When `register_level('TRACE', value=5, ...)` is called, the `logger.trace(msg, *args, **kwargs)` method is dynamically added to the `DSafeLogger` class during the initialization process of `ConfigureLogger`.
+When `RegisterLevel('TRACE', value=5, ...)` is called, the `logger.trace(msg, *args, **kwargs)` method is dynamically added to the `DSafeLogger` class during the initialization process of `ConfigureLogger`.
 
 * Convenient method names are lowercase level names (`TRACE` → `trace`, `NOTICE` → `notice`)
 * If the name is the same as a method that already exists in the `DSafeLogger` class (and parent class `logging.Logger`), addition of the convenience method will be skipped (existing `logger.info()` etc. will not be overwritten). The custom level itself is registered and available in `logger.log(value, msg)`
@@ -1216,6 +1216,7 @@ Registered custom levels are automatically reflected in all components:
 ## 10. Public API structure
 
 This chapter defines the public API of the single-process version (`dsafelogger`) and multiprocess version (`dsafelogger.mp`).  
+Public API function names use PascalCase, such as `ConfigureLogger()`, `GetLogger()`, `RegisterLevel()`, `ReopenLogFiles()`, and `SafeShutdown()`. This is a deliberate exception to PEP 8's normal snake_case function naming for Python functions; D-SafeLogger prioritizes consistency with its existing public APIs and the visual distinction of operational API entry points.
 In v22c, the multiprocess version is separated into a dedicated namespace while preserving the single-process API contract. This yields the following structure:
 
 - The single-process version can be completed with "one Configure and normal GetLogger" as before.
@@ -1278,16 +1279,16 @@ def GetLogger(name: str = '') -> logging.Logger:
 ```
 The single-process version maintains the auto-fire contract up to v22a. In other words, if `GetLogger()` is called in an uninitialized state, implicit initialization with default arguments is allowed.
 
-### 10.3. `dsafelogger.register_level`
+### 10.3. `dsafelogger.RegisterLevel`
 
 **Re-import rules for spawned workers**:
-- `spawn` worker bootstrap may re-execute module top-level `register_level()`
+- `spawn` worker bootstrap may re-execute module top-level `RegisterLevel()`
 - Re-registration of **same definition** (`name` / `value` / `abbreviation` / `color` is an exact match) is allowed as **idempotent no-op**
 - **Unmatched re-registration** is considered as registry divergence and is treated as **`RuntimeError`**
-- This allows the usual style of placing `register_level()` at module top level to be maintained in the `spawn` environment.
+- This allows the usual style of placing `RegisterLevel()` at module top level to be maintained in the `spawn` environment.
 
 ```python
-def register_level(
+def RegisterLevel(
     name: str,
     value: int,
     abbreviation: str,
@@ -2007,7 +2008,7 @@ Even though the multiprocess version has a separate entrance, it must not destro
 
 What should be inherited:
 - 3-tier configuration management pipeline
-- `register_level()`
+- `RegisterLevel()`
 - append-only routing
 - structured JSONL
 - diagnose/contextualize
@@ -2290,7 +2291,7 @@ This design prevents the host process from permanently blocking even if an unkno
   * §9.7 (new): Added non-destructive handling of `LogRecord` (local mapping/display proxy) as a mandatory implementation guideline for Formatter/Handler.
   * §9.8 (New): Clarified the policy to perform level name abbreviation mapping only in `LEVEL_MAP.get()` in `format()` to avoid global side effects caused by `addLevelName()`.
 * **v15 (Custom Log Level & File Integrity Verification)**:
-  * Added `register_level()` functions (§9.9, §10.3). A custom log level can be inserted at any numerical position. Bulk registration of 3-letter abbreviations, ANSI colors, and convenient methods can be completed with a single call before `ConfigureLogger`. Built-in 5 levels (DEBUG/INFO/WARNING/ERROR/CRITICAL) are protected as inviolable. Fully integrated with the 3-tier configuration management pipeline: Registered custom levels can be used in all environment variables, INI, and arguments.
+  * Added `RegisterLevel()` functions (§9.9, §10.3). A custom log level can be inserted at any numerical position. Bulk registration of 3-letter abbreviations, ANSI colors, and convenient methods can be completed with a single call before `ConfigureLogger`. Built-in 5 levels (DEBUG/INFO/WARNING/ERROR/CRITICAL) are protected as inviolable. Fully integrated with the 3-tier configuration management pipeline: Registered custom levels can be used in all environment variables, INI, and arguments.
   * Addition of file integrity verification function (§7.6). Automatically generate SHA-256 sidecar file (`.sha256`) when routing with `enable_hash=True`. By specifying `manifest_path`, the hash history of all files is added to the manifest file with timestamps. Sidecar is `sha256sum -c` compatible format. Linked with purge/archive (when deleting, sidecar is also deleted, ZIP is included).
   * Add `{prefix}_HASH` / `{prefix}_MANIFEST` environment variables (§4.7, §4.8). Addition of `enable_hash` / `manifest_path` keys in the INI file (§5.3).
   * Add `enable_hash` / `manifest_path` arguments to `ConfigureLogger` (§10.1).
@@ -2314,10 +2315,10 @@ This design prevents the host process from permanently blocking even if an unkno
   * Added `dsafelogger init` subcommand (§8.1). CLI command that prints an INI configuration template to standard output. All setting keys are commented out and instructions on how to use them are provided with inline comments. Supports all v16 keys including `sens_kws` / `sens_kws_replace`.
   * Removed §11 (Backward Compatibility Impact).
 * **v17 (Console color palette settings)**:
-  * Added `color_{abbreviation}` keys to the `[global]` section of the INI file and config_dict (§5.2, §5.3). The console color of the built-in 5 levels (DBG/INF/WAR/ERR/CRI) can be changed according to the terminal environment and visual characteristics. Custom level colors registered with `register_level()` can also be overwritten using the same naming convention.
+  * Added `color_{abbreviation}` keys to the `[global]` section of the INI file and config_dict (§5.2, §5.3). The console color of the built-in 5 levels (DBG/INF/WAR/ERR/CRI) can be changed according to the terminal environment and visual characteristics. Custom level colors registered with `RegisterLevel()` can also be overwritten using the same naming convention.
   * Supported only in the second layer (INI/dictionary) of the 3-layer pipeline. Environment variables (1st layer) and arguments (3rd layer) are intentionally not supported, and `ConfigureLogger` signature is not changed (§9.6).
   * `color_` prefix keys are recognized on a pattern basis and are not included in the fixed key list (`VALID_GLOBAL_KEYS`). Unknown abbreviations and invalid values ​​are output as a warning to stderr and skipped (not Fail-Fast).
-  * Color palette merging order: built-in default → color specified by `register_level()` → `color_{abbreviation}` key in INI/dictionary.
+  * Color palette merging order: built-in default → color specified by `RegisterLevel()` → `color_{abbreviation}` key in INI/dictionary.
   * `dsafelogger init` Added color palette section to template (§8.1.2).
   * Non-destructive change: `color_` Exactly the same behavior as v16 unless the key is specified.
 * **v18 (free-threaded Python support)**:
@@ -2330,7 +2331,7 @@ This design prevents the host process from permanently blocking even if an unkno
   * Separate the safe shutdown guarantee level into "log flush" and "housekeeping best-effort" and specify the order of queue drain → worker join → handler close.
   * Enhanced the integrity area, added serialization of same family maintenance, serialization of manifest addition, and atomic write policy of `.sha256` sidecar.
 * **v20 (Capture/Transport/Sink 3-layer/Vendor-Agnostic/FrozenContext)**:
-  * Restructured the internal architecture into a three-layer model of Capture / Transport / Sink (§11.2). No changes to public API (`ConfigureLogger` / `GetLogger` / `register_level`).
+  * Restructured the internal architecture into a three-layer model of Capture / Transport / Sink (§11.2). No changes to public API (`ConfigureLogger` / `GetLogger` / `RegisterLevel`).
   * `Transport` Introduction of abstractions (`DirectTransport` / `QueueTransport`). Structurally prepared for future addition of `IPCTransport` (multi-process support) (§11.3, §11.4).
   * Clarification of Vendor-Agnostic principles (§2, §11.5). Institutionalize the exclusion of vendor-specific logic (OpenTelemetry, etc.) from core modules as a design guard. CI assumes AST/import-based static inspection.
   * Add `file_fmt` / `console_fmt` parameters (§6.3, §10.1). You can now specify separate Formatters for files and consoles. Added corresponding keys to `[global]` section of INI / config_dict (§5.3).
@@ -2342,7 +2343,7 @@ This design prevents the host process from permanently blocking even if an unkno
 * **v20 (Reflects review points and strengthens robustness)**:
   * Fully defined state machine error recovery. Rollback to `unconfigured` due to exception in `configuring`, and transition to `unconfigured` after completion of `shutting_down`. Added complete state transition table.
   * Eliminate deadlock risk by adding `_registry_lock`. `_get_manifest_lock()` / `_get_family_lock()` use dedicated `_registry_lock` instead of `_lifecycle_lock`.
-  * Protect `register_level()` with `_lifecycle_lock` to prevent `_custom_levels` corruption due to parallel calls in free-threaded Python.
+  * Protect `RegisterLevel()` with `_lifecycle_lock` to prevent `_custom_levels` corruption due to parallel calls in free-threaded Python.
   * Separate `LogEvent` / `_event.py` from the main body of v20 and change to install it at the same time as IPCTransport (Step 10 / v19.1). v20 maintains `LogRecord` + `_ds_*` attribute contract.
   * Added detailed design of PipelineBuilder / Pipeline / ResolvedConfig (detailed design document §3.4).
   * Add vendor-neutral extra field extraction (`_merge_extra_fields`) to `StructuredFormatter`. Added `taskName` for Python 3.12+ to `_STD_RECORD_KEYS`.
@@ -2407,7 +2408,7 @@ This design prevents the host process from permanently blocking even if an unkno
   * `worker_model="executor"` only refers to `concurrent.futures.ProcessPoolExecutor`, and `ThreadPoolExecutor` is not covered.
 
 * **v22f (registry / payload construction principles / Writer crash reinforcement)**:
-  * Added `register_level()` idempotent re-registration rules for registry hash matching timing and spawn re-import.
+  * Added `RegisterLevel()` idempotent re-registration rules for registry hash matching timing and spawn re-import.
   * Added construction principle to not include Strategy/Formatter instances in bootstrap payload, only raw dict/primitive values.
   * Added the reason for `_ds_context` / `_ds_extra` standing convention, process-local semantics of `logging.setLoggerClass()`, active client registry consistency during worker crash, and enhancements to Writer death detection.
 

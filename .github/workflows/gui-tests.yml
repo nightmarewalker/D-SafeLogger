@@ -1,0 +1,33 @@
+name: Optional GUI Tests
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 0"
+  pull_request:
+    paths:
+      - "examples/23_gui_logging_qt.md"
+      - "tests/examples/test_23_gui_logging_qt.py"
+      - ".github/workflows/gui-tests.yml"
+      - "pyproject.toml"
+      - "uv.lock"
+
+jobs:
+  gui-tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Set up Python
+        run: uv python install 3.13
+      - name: Install dependencies
+        run: uv sync --group dev --group gui
+      - name: Run GUI tests
+        run: uv run pytest tests/examples/test_23_gui_logging_qt.py -v --timeout=30
+        continue-on-error: ${{ matrix.os == 'windows-latest' }}

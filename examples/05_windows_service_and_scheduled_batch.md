@@ -64,7 +64,7 @@ The tested scenario for this guide is maintained in
 
 from pathlib import Path
 
-from dsafelogger import ConfigureLogger, GetLogger, _shutdown
+from dsafelogger import ConfigureLogger, GetLogger, SafeShutdown
 
 
 def run_service_iteration(logger, item: int) -> None:
@@ -92,7 +92,7 @@ def main() -> None:
         run_service_iteration(logger, item)
     run_scheduled_batch(logger)
 
-    _shutdown()
+    SafeShutdown()
     print(f"routed files: {sorted(p.name for p in log_dir.glob('WinBatch_*.log'))}")
 
 

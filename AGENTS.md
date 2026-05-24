@@ -16,7 +16,7 @@ This guide gives AI agents the current project context, quality gates, and bench
   - sdist includes key release documents: `CHANGELOG.md`, `README_ja.md`, `TESTING.md`, `BENCHMARK.md`, and `CONTRIBUTING.md`.
   - selected benchmark raw summaries include both `summary.json` and `summary.md` so generated benchmark summaries can be checked from sdist.
   - `dsafelogger.mp` bootstrap-ready validation now checks registry hash consistency instead of being a no-op.
-  - custom `register_level()` spawn-worker propagation requirements are documented in public docs/examples/API docs.
+  - custom `RegisterLevel()` spawn-worker propagation requirements are documented in public docs/examples/API docs.
   - publish workflow now validates wheel/sdist contents and runs `uvx twine check dist/*` before PyPI upload.
 - Remaining release-time checks:
   - Clean repository scratch artifacts before release (`*.zip`, extracted temp directories, old `dist/`, temporary logs, generated unpacked trees, stray `*.egg-info`).
@@ -81,13 +81,13 @@ uv run pytest tests -v
 Current v23k local validation on Python 3.14.3 / Windows:
 
 ```text
-714 passed, 3 skipped
+723 passed, 7 skipped
 ```
 
 Latest collection-only validation:
 
 ```text
-717 tests collected
+730 tests collected
 ```
 
 Latest coverage validation: terminal total `87%`, XML line-rate `88.97%`, XML branch-rate `81.46%` on Python 3.14.3 / Windows.
@@ -237,7 +237,7 @@ Use this checklist when updating the package version and pushing a release branc
   - sdist は主要 release documents（`CHANGELOG.md`, `README_ja.md`, `TESTING.md`, `BENCHMARK.md`, `CONTRIBUTING.md`）を含む。
   - selected benchmark raw summaries は `summary.json` と `summary.md` の両方を含み、sdist から generated benchmark summaries を検証できる。
   - `dsafelogger.mp` の bootstrap-ready validation は registry hash consistency を確認し、no-op ではない。
-  - spawn worker 向け custom `register_level()` propagation requirements は public docs/examples/API docs に記載済み。
+  - spawn worker 向け custom `RegisterLevel()` propagation requirements は public docs/examples/API docs に記載済み。
   - publish workflow は PyPI upload 前に wheel/sdist contents と `uvx twine check dist/*` を検証する。
 - release 時点で再確認する項目:
   - repository 上の scratch artifacts（`*.zip`、展開済み一時ディレクトリ、古い `dist/`、一時 log、手動展開ツリー、 stray `*.egg-info`）を整理すること。
@@ -302,13 +302,13 @@ uv run pytest tests -v
 現行 v23k の local validation（Python 3.14.3 / Windows）:
 
 ```text
-714 passed, 3 skipped
+723 passed, 7 skipped
 ```
 
 最新の collect-only validation:
 
 ```text
-717 tests collected
+730 tests collected
 ```
 
 最新 coverage validation: terminal total `87%`, XML line-rate `88.97%`, XML branch-rate `81.46%`（Python 3.14.3 / Windows）。

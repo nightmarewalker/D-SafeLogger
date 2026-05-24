@@ -29,7 +29,7 @@ Let's break that down:
 | Component | Meaning |
 |-----------|---------|
 | `2026-04-03 09:15:22.738` | Timestamp with **millisecond** precision — essential for correlating events across services |
-| `[INF]` | Built-in level abbreviation: `DBG` DEBUG, `INF` INFO, `WAR` WARNING, `ERR` ERROR, `CRI` CRITICAL (`TRC` and other custom levels are available after `register_level()`) |
+| `[INF]` | Built-in level abbreviation: `DBG` DEBUG, `INF` INFO, `WAR` WARNING, `ERR` ERROR, `CRI` CRITICAL (`TRC` and other custom levels are available after `RegisterLevel()`) |
 | `[app.py:4:<module>]` | **Source location** — file name, line number, and function name so you can jump straight to the code |
 | `Application started` | Your message |
 

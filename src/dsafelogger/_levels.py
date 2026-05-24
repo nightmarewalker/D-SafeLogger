@@ -30,7 +30,7 @@ _custom_levels: dict[str, tuple[int, str, str]] = {}
 _levels_lock = threading.RLock()
 
 
-def register_level(
+def register_custom_level(
     name: str,
     value: int,
     abbreviation: str,
@@ -180,7 +180,7 @@ def get_valid_abbreviations() -> set[str]:
 def install_convenience_methods(logger_class: type) -> None:
     """Dynamically add convenience methods for custom levels.
 
-    Example: register_level('TRACE', 5, 'TRC') → logger.trace(msg, ...)
+    Example: RegisterLevel('TRACE', 5, 'TRC') -> logger.trace(msg, ...)
     """
     with _levels_lock:
         custom_levels = dict(_custom_levels)

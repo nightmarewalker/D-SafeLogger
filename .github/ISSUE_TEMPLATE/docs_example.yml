@@ -1,0 +1,75 @@
+name: Documentation or example issue
+description: Report a problem in README, docs, or examples
+title: "[Docs]: "
+labels: ["documentation"]
+body:
+  - type: dropdown
+    id: example_file
+    attributes:
+      label: Example file
+      options:
+        - examples/01_quick_start.md
+        - examples/02_configuration_guide.md
+        - examples/03_migration_from_stdlib.md
+        - examples/04_stdlib_ecosystem_coexistence.md
+        - examples/05_windows_service_and_scheduled_batch.md
+        - examples/06_web_api_logging.md
+        - examples/07_long_running_service.md
+        - examples/08_compliance_audit.md
+        - examples/09_debugging_production.md
+        - examples/10_incident_response_bundle.md
+        - examples/11_async_performance.md
+        - examples/12_multiprocess_logging.md
+        - examples/13_external_rotation_reopen.md
+        - examples/14_cli_operations.md
+        - examples/15_opentelemetry_logging.md
+        - examples/16_structlog_coexistence.md
+        - examples/17_container_collector_coexistence.md
+        - examples/18_console_progress_coexistence.md
+        - examples/19_sentry_coexistence.md
+        - examples/20_testing_and_warnings.md
+        - examples/21_web_runtime_ownership.md
+        - examples/22_cloud_logging_coexistence.md
+        - examples/23_gui_logging_qt.md
+    validations:
+      required: true
+  - type: input
+    id: section
+    attributes:
+      label: Code block or section
+      placeholder: "Section title, line, or code block description"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+    validations:
+      required: true
+  - type: dropdown
+    id: directory_state
+    attributes:
+      label: Directory state
+      options:
+        - Fresh directory
+        - Existing project directory
+        - Unknown
+    validations:
+      required: true
+  - type: checkboxes
+    id: optional_dependencies
+    attributes:
+      label: Optional dependencies installed
+      options:
+        - label: OpenTelemetry dependencies
+        - label: structlog
+        - label: tqdm
+        - label: Rich
+        - label: sentry-sdk
+        - label: PySide6

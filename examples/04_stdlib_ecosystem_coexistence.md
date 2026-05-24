@@ -76,7 +76,7 @@ The tested scenario for this guide is maintained in
 import logging
 from pathlib import Path
 
-from dsafelogger import ConfigureLogger, GetLogger, _shutdown
+from dsafelogger import ConfigureLogger, GetLogger, SafeShutdown
 
 
 def charge_card(order_id: str) -> None:
@@ -108,7 +108,7 @@ def main() -> None:
     app_log.info("received order", extra={"order_id": "ord-1001"})
     charge_card("ord-1001")
 
-    _shutdown()
+    SafeShutdown()
     print(f"application log: {log_dir / 'Ecosystem.log'}")
     print(f"library-style log: {vendor_log}")
 

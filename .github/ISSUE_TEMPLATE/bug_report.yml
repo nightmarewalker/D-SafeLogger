@@ -1,0 +1,92 @@
+name: Bug report
+description: Report a reproducible D-SafeLogger bug
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If you are not using `dsafelogger.mp`, leave the multiprocess-only
+        fields blank. For single-process issues, include the exception
+        traceback, logger configuration, log output, and a minimal reproduction
+        script.
+  - type: input
+    id: version
+    attributes:
+      label: D-SafeLogger version
+      placeholder: "0.3.0"
+    validations:
+      required: true
+  - type: input
+    id: python_version
+    attributes:
+      label: Python version
+      placeholder: "3.14.3"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options:
+        - Windows
+        - Linux
+        - macOS
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      options:
+        - single-process
+        - async
+        - multiprocess
+    validations:
+      required: true
+  - type: input
+    id: routing_mode
+    attributes:
+      label: routing_mode
+      placeholder: "none / daily / hourly / size / count / ..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction code
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Full error traceback
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: mp_status
+    attributes:
+      label: mp.GetDeliveryStatus() output
+      description: "Multiprocess only. Paste the dict output of mp.GetDeliveryStatus()."
+      render: python
+    validations:
+      required: false
+  - type: textarea
+    id: runtime_warning_jsonl
+    attributes:
+      label: Runtime warning JSONL
+      description: "Multiprocess only. If runtime_warning_path is configured, paste the contents (or last N lines). Include any .fallback.jsonl files."
+      render: json
+    validations:
+      required: false
+  - type: textarea
+    id: shutdown_report_json
+    attributes:
+      label: Shutdown report JSON
+      description: "Multiprocess only. If shutdown_report_path is configured, paste the full JSON."
+      render: json
+    validations:
+      required: false

@@ -61,6 +61,28 @@ jobs:
           PYTHON_GIL: "0"
         run: uv run --python ${{ matrix.python-version }} pytest tests/ -v --tb=short
 
+  examples-tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --group dev --group examples
+
+      - name: Run coexistence example tests
+        run: uv run pytest tests/examples/test_18_console_progress_coexistence.py tests/examples/test_19_sentry_coexistence.py tests/examples/test_20_testing_and_warnings.py -v
+
   publication-checks:
     runs-on: ubuntu-latest
 

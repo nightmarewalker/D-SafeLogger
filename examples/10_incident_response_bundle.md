@@ -68,7 +68,7 @@ The tested scenario for this guide is maintained in
 import os
 from pathlib import Path
 
-from dsafelogger import ConfigureLogger, GetLogger, _shutdown
+from dsafelogger import ConfigureLogger, GetLogger, SafeShutdown
 
 
 def fail_payment() -> None:
@@ -105,7 +105,7 @@ def main() -> None:
         for idx in range(8):
             logger.info("bundle filler record", extra={"sequence": idx})
 
-    _shutdown()
+    SafeShutdown()
     print(f"bundle directory: {bundle_dir}")
     print(f"manifest: {manifest}")
 

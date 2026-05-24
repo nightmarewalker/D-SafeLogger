@@ -3,14 +3,15 @@
 Public API:
     ConfigureLogger - Initialize the logging system with 3-layer config pipeline
     GetLogger       - Get a DSafeLogger instance (auto-fires ConfigureLogger if needed)
-    register_level  - Register custom log levels before ConfigureLogger
+    RegisterLevel   - Register custom log levels before ConfigureLogger
     ReopenLogFiles  - Re-open file sinks after external log rotation
+    SafeShutdown    - Terminal public shutdown for the current process
 """
 
 from __future__ import annotations
 
 __version__ = '0.3.0'
-__all__ = ['ConfigureLogger', 'GetLogger', 'register_level', 'ReopenLogFiles']
+__all__ = ['ConfigureLogger', 'GetLogger', 'ReopenLogFiles', 'SafeShutdown', 'RegisterLevel']
 
 import atexit
 import copy
@@ -57,7 +58,7 @@ from dsafelogger._levels import (
     get_valid_abbreviations,
     get_valid_level_names,
     install_convenience_methods,
-    register_level as _register_level_impl,
+    register_custom_level as _register_custom_level_impl,
 )
 from dsafelogger._logger import DSafeLogger
 from dsafelogger._purge import ArchiveWorker, PurgeWorker
@@ -69,7 +70,7 @@ from dsafelogger._validator import PathValidator
 # ──────────────────────────────────────────────────────────────
 _lifecycle_lock = threading.RLock()
 _workers_lock = threading.Lock()
-_configure_state = 'unconfigured'  # unconfigured | auto | explicit | configuring | shutting_down
+_configure_state = 'unconfigured'  # unconfigured | auto | explicit | configuring | shutting_down | terminal_shutdown
 _active_pipeline = None  # v20: Pipeline instances
 _active_workers: set[threading.Thread] = set()
 _atexit_registered: bool = False
@@ -166,7 +167,7 @@ def _reset_for_tests() -> None:
     levels_mod._clear_custom_levels_for_tests()
 
 
-def register_level(
+def RegisterLevel(
     name: str,
     value: int,
     abbreviation: str,
@@ -191,10 +192,10 @@ def register_level(
     with _lifecycle_lock:
         if _configure_state != 'unconfigured':
             raise RuntimeError(
-                'register_level() must be called before ConfigureLogger(). '
+                'RegisterLevel() must be called before ConfigureLogger(). '
                 'Custom levels cannot be added after logger initialization.'
             )
-        _register_level_impl(name, value, abbreviation, color)
+        _register_custom_level_impl(name, value, abbreviation, color)
 
 
 def ConfigureLogger(
@@ -241,6 +242,11 @@ def ConfigureLogger(
     _is_auto = False
 
     with _lifecycle_lock:
+        if _configure_state == 'terminal_shutdown':
+            raise RuntimeError(
+                'SafeShutdown() has been called in this process. '
+                'D-SafeLogger cannot be initialized or used again.'
+            )
         if _configure_state == 'explicit':
             return  # No-Op
         if _configure_state == 'shutting_down':
@@ -751,6 +757,12 @@ def GetLogger(name: str = '') -> DSafeLogger:
     with _lifecycle_lock:
         state = _configure_state
 
+    if state == 'terminal_shutdown':
+        raise RuntimeError(
+            'SafeShutdown() has been called in this process. '
+            'D-SafeLogger cannot be initialized or used again.'
+        )
+
     if state == 'unconfigured':
         with _lifecycle_lock:
             # Re-check inside the lock: another thread may have already configured.
@@ -808,20 +820,27 @@ def GetLogger(name: str = '') -> DSafeLogger:
     return logger  # type: ignore[return-value]
 
 
-def _shutdown() -> None:
+def _shutdown(terminal: bool = False) -> None:
     """Safe shutdown handler for atexit."""
     global _configure_state, _active_pipeline
 
     # Phase A: State transition under lock
     pipeline_ref = None
+    should_cleanup = False
     with _lifecycle_lock:
-        if _configure_state == 'shutting_down':
+        if _configure_state == 'terminal_shutdown':
+            return  # Idempotent after public terminal shutdown
+        if _configure_state == 'shutting_down' and not terminal:
             return  # Idempotent
-        if _configure_state == 'unconfigured':
+        if _configure_state == 'unconfigured' and not terminal:
             return
-        _configure_state = 'shutting_down'
+        should_cleanup = _configure_state != 'unconfigured'
+        _configure_state = 'terminal_shutdown' if terminal else 'shutting_down'
         pipeline_ref = _active_pipeline
         _active_pipeline = None
+
+    if not should_cleanup:
+        return
 
     # Acquire root logger reference up-front so the finally block always has it
     # (pyright narrowing: ensures `root` is not possibly unbound when accessed below).
@@ -922,3 +941,19 @@ def ReopenLogFiles() -> None:
             "ReopenLogFiles() found no file sinks to reopen. "
             "This may indicate a console-only configuration."
         )
+
+
+def SafeShutdown() -> None:
+    """Shut down D-SafeLogger in the current process.
+
+    Flushes pending records, stops async listeners and worker threads,
+    closes file sinks, and removes D-SafeLogger handlers from the root logger.
+
+    This call is idempotent and safe to call alongside the atexit hook.
+    After SafeShutdown(), ConfigureLogger() and GetLogger() cannot be called
+    again in the same process; doing so raises RuntimeError.
+
+    For test suites that need fresh ConfigureLogger() calls per test, use an
+    internal test fixture rather than this public API.
+    """
+    _shutdown(terminal=True)

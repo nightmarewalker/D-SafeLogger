@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from dsafelogger import ConfigureLogger, GetLogger, _shutdown
+from dsafelogger import ConfigureLogger, GetLogger, SafeShutdown
 
 
 def test_container_collector_coexistence(tmp_path, clean_env, capsys):
@@ -23,7 +23,7 @@ def test_container_collector_coexistence(tmp_path, clean_env, capsys):
         "local audit record",
         extra={"container_id": "local-dev", "operation": "startup"},
     )
-    _shutdown()
+    SafeShutdown()
     print(f"collector can tail: {log_dir / 'ContainerAudit.log'}")
 
     captured = capsys.readouterr()

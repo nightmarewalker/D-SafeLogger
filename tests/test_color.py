@@ -7,7 +7,7 @@ import logging
 import sys
 
 import pytest
-from dsafelogger import register_level
+from dsafelogger import RegisterLevel
 from dsafelogger._color import ColorStreamHandler
 from dsafelogger._formatter import DSafeFormatter
 
@@ -117,7 +117,7 @@ class TestColorStreamHandler:
         assert '\033[0m' in output  # Reset
 
     def test_registered_custom_level_uses_abbreviation_for_color_lookup(self):
-        register_level('TRACE', 5, 'TRC', '\033[35m')
+        RegisterLevel('TRACE', 5, 'TRC', '\033[35m')
         stream = io.StringIO()
         handler = ColorStreamHandler(stream=stream, color_enabled=True)
         handler.setFormatter(logging.Formatter('%(levelname)s'))
@@ -169,7 +169,7 @@ class TestColorStreamHandlerStylesAndImmutability:
 
     def test_custom_level_levelname_immutable(self):
         """UT-CSH-019: custom level record.levelname is not mutated by emit()."""
-        register_level('TRACE2', 6, 'TR2', '\033[35m')
+        RegisterLevel('TRACE2', 6, 'TR2', '\033[35m')
         stream = io.StringIO()
         handler = ColorStreamHandler(stream=stream, color_enabled=True)
         handler.setFormatter(logging.Formatter('%(levelname)s'))

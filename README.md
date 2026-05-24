@@ -195,7 +195,8 @@ See [Configuration Guide](examples/02_configuration_guide.md) for INI files, dic
 Suggested reading paths:
 
 - **Getting started:** 01, 02, 03
-- **Stdlib and ecosystem integration:** 03, 04, 15, 16
+- **Stdlib and ecosystem integration:** 03, 04, 15, 16, 18, 19, 20
+- **Runtime ownership and GUI:** 17, 21, 23
 - **Windows and service operations:** 05, 07, 13, 14
 - **Application patterns:** 06, 10, 11, 17
 - **Audit and incident response:** 08, 09, 10
@@ -220,6 +221,12 @@ Suggested reading paths:
 | 15 | [OpenTelemetry Logging](examples/15_opentelemetry_logging.md) | Trace correlation with stdlib instrumentation |
 | 16 | [Structlog Coexistence](examples/16_structlog_coexistence.md) | Using structlog alongside D-SafeLogger |
 | 17 | [Container and Collector Coexistence](examples/17_container_collector_coexistence.md) | Write local JSONL while external collectors ship logs |
+| 18 | [Console Progress Coexistence](examples/18_console_progress_coexistence.md) | tqdm/Rich progress with durable file logging |
+| 19 | [Sentry Coexistence](examples/19_sentry_coexistence.md) | Local evidence alongside remote error tracking |
+| 20 | [Testing and Warnings](examples/20_testing_and_warnings.md) | pytest caplog and warnings.warn() routing |
+| 21 | [Web Runtime Ownership](examples/21_web_runtime_ownership.md) | Logger ownership with web frameworks |
+| 22 | [Cloud Logging Coexistence](examples/22_cloud_logging_coexistence.md) | Local durable evidence alongside cloud logging platforms |
+| 23 | [GUI Logging (Qt)](examples/23_gui_logging_qt.md) | PySide6 log panel with durable file logging |
 
 ## Benchmarks
 
@@ -236,6 +243,16 @@ The release gate runs the full dev test suite across Windows, macOS, and Linux o
 See [TESTING.md](TESTING.md) for details.
 
 ## Compatibility / Non-goals
+
+### Migration from 0.3.x
+
+`register_level()` is renamed to `RegisterLevel()` after 0.3.x as an intentional
+public API normalization. Update imports such as
+`from dsafelogger import register_level` to `from dsafelogger import RegisterLevel`.
+D-SafeLogger public functions intentionally use PascalCase for the primary API
+surface. This is a deliberate exception to PEP 8's normal snake_case function
+naming, kept for consistency with the existing public APIs such as
+`ConfigureLogger()` and `GetLogger()`.
 
 - Python: 3.11 or newer.
 - OS: Windows, macOS, and Linux.

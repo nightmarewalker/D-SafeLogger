@@ -39,6 +39,17 @@ You do not need it when:
 
 `dsafelogger.mp` does not replace `dsafelogger`. The single-process API is still the entry point for the parent process when multiprocess is not used. The two `ConfigureLogger` symbols are separate: `dsafelogger.ConfigureLogger` and `dsafelogger.mp.ConfigureLogger` configure different runtimes and must not be mixed in the same process.
 
+### Why is delivery-state accounting multiprocess only?
+
+Delivery-state accounting (`mp.GetDeliveryStatus()`, runtime warning JSON
+Lines, shutdown report JSON) is primarily a multiprocess feature.
+
+In single-process mode, D-SafeLogger relies on fail-fast configuration
+validation, normal file/handler errors, and bounded async shutdown behavior
+rather than exposing a multiprocess-style delivery status schema. The failure
+modes in single-process are observable through standard Python exceptions and
+the diagnostic mode, not through IPC-based accounting counters.
+
 ## 3. What the Writer guarantees, and what it does not
 
 D-SafeLogger centralizes file ownership in a parent-side Writer and classifies the delivery outcome of records the runtime accepts. That is the contract.
@@ -284,13 +295,13 @@ Custom levels live in a per-process registry. With `spawn`, that registry starts
 
 Two valid patterns:
 
-- **Module-level registration.** `register_level(...)` is called at import time in a module that every process imports. With `spawn`, this re-runs in each worker. Order it before any `mp.AttachCurrentProcess` call.
+- **Module-level registration.** `RegisterLevel(...)` is called at import time in a module that every process imports. With `spawn`, this re-runs in each worker. Order it before any `mp.AttachCurrentProcess` call.
 - **Initializer registration.** Wrap registration and attach in a small initializer function and pass that as the `initializer=` to `Pool` / `ProcessPoolExecutor`:
 
   ```python
   def init_worker(log_ctx):
-      from dsafelogger import register_level, mp
-      register_level("TRACE", value=5, abbreviation="TRC")
+      from dsafelogger import RegisterLevel, mp
+      RegisterLevel("TRACE", value=5, abbreviation="TRC")
       mp.AttachCurrentProcess(log_ctx)
   ```
 
@@ -298,7 +309,7 @@ Two valid patterns:
 
 The Writer validates the worker's level registry against the parent's during `AttachCurrentProcess` (see the registry hash in `BootstrapContext`). A mismatch fails the attach immediately.
 
-`register_level()` must be called **before** `ConfigureLogger` in any process. Calling it after the runtime is initialized raises `RuntimeError`.
+`RegisterLevel()` must be called **before** `ConfigureLogger` in any process. Calling it after the runtime is initialized raises `RuntimeError`.
 
 ## 13. Multiprocess environment-variable knobs
 

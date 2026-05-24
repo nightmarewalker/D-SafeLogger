@@ -7,8 +7,9 @@ D-SafeLogger: Zero-dependency, thread-safe, append-only logging library.
 Public API:
     ConfigureLogger - Initialize the logging system with 3-layer config pipeline
     GetLogger       - Get a DSafeLogger instance (auto-fires ConfigureLogger if needed)
-    register_level  - Register custom log levels before ConfigureLogger
+    RegisterLevel   - Register custom log levels before ConfigureLogger
     ReopenLogFiles  - Re-open file sinks after external log rotation
+    SafeShutdown    - Terminal public shutdown for the current process
 
 ## Functions
 
@@ -38,6 +39,23 @@ Args:
 Returns:
     DSafeLogger instance (logging.Logger compatible).
 
+### `RegisterLevel(name: 'str', value: 'int', abbreviation: 'str', color: 'str' = '') -> 'None'`
+
+Register a custom log level before ConfigureLogger().
+
+Must be called before ConfigureLogger(). Calling after initialization
+raises RuntimeError.
+
+Args:
+    name: Level name (e.g. 'TRACE'). Normalized to uppercase.
+    value: Numeric value (e.g. 5). Built-in values (10,20,30,40,50) are protected.
+    abbreviation: 3-character abbreviation (e.g. 'TRC'). Required.
+    color: ANSI escape sequence string. Empty for no color.
+
+Raises:
+    RuntimeError: If ConfigureLogger() has already been called.
+    ValueError: If validation fails.
+
 ### `ReopenLogFiles() -> 'None'`
 
 Re-open all writer-side file sinks after external log rotation.
@@ -59,19 +77,16 @@ Raises:
     ValueError: If any active file sink uses a routing strategy other
         than NoneStrategy (routing_mode != 'none').
 
-### `register_level(name: 'str', value: 'int', abbreviation: 'str', color: 'str' = '') -> 'None'`
+### `SafeShutdown() -> 'None'`
 
-Register a custom log level before ConfigureLogger().
+Shut down D-SafeLogger in the current process.
 
-Must be called before ConfigureLogger(). Calling after initialization
-raises RuntimeError.
+Flushes pending records, stops async listeners and worker threads,
+closes file sinks, and removes D-SafeLogger handlers from the root logger.
 
-Args:
-    name: Level name (e.g. 'TRACE'). Normalized to uppercase.
-    value: Numeric value (e.g. 5). Built-in values (10,20,30,40,50) are protected.
-    abbreviation: 3-character abbreviation (e.g. 'TRC'). Required.
-    color: ANSI escape sequence string. Empty for no color.
+This call is idempotent and safe to call alongside the atexit hook.
+After SafeShutdown(), ConfigureLogger() and GetLogger() cannot be called
+again in the same process; doing so raises RuntimeError.
 
-Raises:
-    RuntimeError: If ConfigureLogger() has already been called.
-    ValueError: If validation fails.
+For test suites that need fresh ConfigureLogger() calls per test, use an
+internal test fixture rather than this public API.

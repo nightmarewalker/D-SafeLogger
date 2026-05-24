@@ -73,6 +73,10 @@ uv run pyright tests/typing_smoke
 5. Update documentation if needed.
 6. Submit a PR with a clear description referencing the accepted issue.
 
+### Examples / docs update policy
+
+See the [Example Documentation Policy](TESTING.md#example-documentation-policy) in `TESTING.md` for requirements when adding or modifying examples.
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under the

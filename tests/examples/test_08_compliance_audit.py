@@ -6,7 +6,7 @@ import json
 import re
 from datetime import datetime
 
-from dsafelogger import ConfigureLogger, GetLogger, _shutdown, register_level
+from dsafelogger import ConfigureLogger, GetLogger, _shutdown, RegisterLevel
 from dsafelogger import _routing
 
 
@@ -24,7 +24,7 @@ def test_compliance_audit_writes_daily_hash_sidecars_and_manifest(tmp_path, clea
 
     monkeypatch.setattr(_routing, "datetime", FakeDateTime)
 
-    register_level("AUDIT", 35, "AUD", "\033[95m")
+    RegisterLevel("AUDIT", 35, "AUD", "\033[95m")
 
     ConfigureLogger(
         log_path=str(log_dir),

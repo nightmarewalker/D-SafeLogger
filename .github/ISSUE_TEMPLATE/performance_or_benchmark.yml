@@ -1,0 +1,59 @@
+name: Performance or benchmark report
+description: Share benchmark data or performance concerns
+title: "[Performance]: "
+labels: ["performance"]
+body:
+  - type: input
+    id: profile
+    attributes:
+      label: Benchmark profile
+      placeholder: "single-process / multiprocess performance_profile / resilience_profile"
+    validations:
+      required: true
+  - type: input
+    id: os_filesystem
+    attributes:
+      label: OS and filesystem
+      placeholder: "Windows 11 / NTFS"
+    validations:
+      required: true
+  - type: input
+    id: python_version
+    attributes:
+      label: Python version
+      placeholder: "3.14.3"
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: CPU and disk type
+      placeholder: "Ryzen 7 / NVMe SSD"
+    validations:
+      required: true
+  - type: dropdown
+    id: sync_network
+    attributes:
+      label: Sync folder or network mount
+      options:
+        - No, local durable filesystem
+        - Cloud-synced folder
+        - Network mount
+        - Container bind mount
+        - Unknown
+    validations:
+      required: true
+  - type: input
+    id: comparison_target
+    attributes:
+      label: Comparison target
+      placeholder: "stdlib logging / loguru / structlog / previous D-SafeLogger version"
+    validations:
+      required: true
+  - type: textarea
+    id: raw_output
+    attributes:
+      label: Raw output
+      render: text
+    validations:
+      required: true

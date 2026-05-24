@@ -97,9 +97,9 @@ def _executor_worker_log() -> str:
 
 
 def _worker_log_custom_level(ctx: BootstrapContext, result_queue) -> None:
-    from dsafelogger import register_level
+    from dsafelogger import RegisterLevel
 
-    register_level('TRACE', 5, 'TRC')
+    RegisterLevel('TRACE', 5, 'TRC')
     mp.AttachCurrentProcess(ctx)
     logger = mp.GetLogger('test.worker.custom')
     logger.log(5, 'trace_message')
@@ -300,7 +300,7 @@ class TestMpIntegration:
 
     def test_custom_level_registered_configuration(self, tmp_path, mp_state):
         """IT-MP-008: custom level messages reach the Writer."""
-        dsafelogger.register_level('TRACE', 5, 'TRC')
+        dsafelogger.RegisterLevel('TRACE', 5, 'TRC')
         spawn_ctx = _spawn_context()
         ctx = mp.ConfigureLogger(
             log_path=str(tmp_path),

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `SafeShutdown()` public API for terminal single-process shutdown.
+- Ecosystem examples for console progress renderers, Sentry, pytest/warnings, web runtime ownership, cloud logging coexistence, and Qt GUI log-panel coexistence.
+- GitHub Issue Forms, a pull request template, and `SUPPORT.md`.
+- Optional `examples` and `gui` dependency groups for example-specific test coverage.
+
+### Changed
+- **Breaking:** `register_level()` has been renamed to `RegisterLevel()` to align the public API with D-SafeLogger's PascalCase function naming.
+- Public documentation now states that this PascalCase public API style is an intentional exception to PEP 8 snake_case function naming.
+- Container/cloud logging notes and single-process-vs-multiprocess delivery accounting guidance are documented in the examples.
+
 ## [0.3.0] - 2026-05-23
 
 ### Added
@@ -119,7 +130,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Diagnostic formatter with f_locals expansion and sensitive data masking
 - ANSI color console output with customizable palette
 - Async logging mode with context-preserving QueueHandler
-- Custom log level registration with `register_level()`
+- Custom log level registration with `RegisterLevel()`
 - `contextualize()` context manager for structured log context
 - CLI tool (`dsafelogger init/ls/tail -f`)
 - Free-threaded Python (3.13t/3.14t) support with explicit locks

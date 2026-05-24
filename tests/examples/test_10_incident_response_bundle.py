@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 
-from dsafelogger import ConfigureLogger, GetLogger, _shutdown
+from dsafelogger import ConfigureLogger, GetLogger, SafeShutdown
 
 
 def _fail_payment() -> None:
@@ -40,7 +40,7 @@ def test_incident_response_bundle(tmp_path, clean_env):
             logger.exception("captured failing payment path")
         for idx in range(8):
             logger.info("bundle filler record", extra={"sequence": idx})
-    _shutdown()
+    SafeShutdown()
 
     log_files = sorted(bundle_dir.glob("Incident_*.log"))
     assert log_files

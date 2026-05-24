@@ -43,21 +43,21 @@ def _spawn_worker_via_initializer() -> str:
     return 'done'
 
 
-def _spawn_worker_reregister_level() -> str:
-    from dsafelogger import register_level
+def _spawn_worker_reuse_custom_level() -> str:
+    from dsafelogger import RegisterLevel
 
-    register_level('TRACE', 5, 'TRC')
-    register_level('TRACE', 5, 'TRC')
+    RegisterLevel('TRACE', 5, 'TRC')
+    RegisterLevel('TRACE', 5, 'TRC')
     logger = mp.GetLogger('test.spawn.level')
     logger.info('spawn_level_message')
     return 'done'
 
 
-def _spawn_worker_reregister_level_process(ctx: BootstrapContext, result_queue) -> None:
-    from dsafelogger import register_level
+def _spawn_worker_reuse_custom_level_process(ctx: BootstrapContext, result_queue) -> None:
+    from dsafelogger import RegisterLevel
 
-    register_level('TRACE', 5, 'TRC')
-    register_level('TRACE', 5, 'TRC')
+    RegisterLevel('TRACE', 5, 'TRC')
+    RegisterLevel('TRACE', 5, 'TRC')
     mp.AttachCurrentProcess(ctx)
     logger = mp.GetLogger('test.spawn.level')
     logger.info('spawn_level_message')
@@ -153,10 +153,10 @@ class TestWindowsSpawn:
         assert p.exitcode == 0
 
     def test_spawn_reregister_same_definition_noop(self, tmp_path, mp_state):
-        """WT-MP-004: same-definition register_level re-import is a no-op."""
-        from dsafelogger import register_level
+        """WT-MP-004: same-definition RegisterLevel re-import is a no-op."""
+        from dsafelogger import RegisterLevel
 
-        register_level('TRACE', 5, 'TRC')
+        RegisterLevel('TRACE', 5, 'TRC')
         ctx = mp.ConfigureLogger(
             log_path=str(tmp_path),
             console_out=False,
@@ -164,7 +164,7 @@ class TestWindowsSpawn:
         spawn_ctx = multiprocessing.get_context('spawn')
         result_q = spawn_ctx.Queue(1)
         p = spawn_ctx.Process(
-            target=_spawn_worker_reregister_level_process,
+            target=_spawn_worker_reuse_custom_level_process,
             args=(ctx, result_q),
         )
         p.start()

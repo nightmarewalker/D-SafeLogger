@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from dsafelogger import ConfigureLogger, GetLogger, _shutdown, register_level
+from dsafelogger import ConfigureLogger, GetLogger, _shutdown, RegisterLevel
 
 
 def _process_order() -> None:
@@ -22,7 +22,7 @@ def test_debugging_production_masks_diagnostic_locals_and_custom_level(tmp_path,
     os.environ["D_LOG_LEVEL"] = "TRACE"
     log_dir = tmp_path / "logs"
 
-    register_level("TRACE", 5, "TRC", "\033[90m")
+    RegisterLevel("TRACE", 5, "TRC", "\033[90m")
     ConfigureLogger(
         log_path=str(log_dir),
         pg_name="DebugDemo",

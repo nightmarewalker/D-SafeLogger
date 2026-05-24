@@ -281,10 +281,10 @@ class TestManifestAndFamilyLocks:
 class TestConfigureAdvanced:
     """Test ConfigureLogger advanced features."""
 
-    def test_register_level_after_configure_raises(self, tmp_path, clean_env):
+    def test_RegisterLevel_after_configure_raises(self, tmp_path, clean_env):
         ConfigureLogger(log_path=str(tmp_path), console_out=False)
         with pytest.raises(RuntimeError, match='must be called before'):
-            dsafelogger.register_level('TRACE', 5, 'TRC')
+            dsafelogger.RegisterLevel('TRACE', 5, 'TRC')
 
     def test_enable_hash_none_mode_raises(self, tmp_path, clean_env):
         with pytest.raises(ValueError, match='enable_hash'):

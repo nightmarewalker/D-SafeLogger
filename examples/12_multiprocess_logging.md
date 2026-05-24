@@ -326,7 +326,10 @@ All four variables are validated at parent `mp.ConfigureLogger` time. An unparse
 Production services often run without a useful console or stderr stream. In that case, configure explicit observability output paths:
 
 ```python
+from pathlib import Path
 from dsafelogger import mp
+
+Path("logs").mkdir(parents=True, exist_ok=True)
 
 ctx = mp.ConfigureLogger(
     log_path="logs",
@@ -335,6 +338,8 @@ ctx = mp.ConfigureLogger(
     shutdown_report_path="logs/shutdown-report.json",
 )
 ```
+
+The parent directory for `runtime_warning_path` and `shutdown_report_path` must exist before `mp.ConfigureLogger()` starts. Both paths go through fail-fast validation before any I/O begins; they do not rely on `log_path` being created first. The example creates `logs/` explicitly so all three paths pass validation.
 
 During runtime, call `mp.GetDeliveryStatus()` from the parent process to read the current Writer accounting snapshot:
 

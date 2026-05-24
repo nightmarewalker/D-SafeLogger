@@ -130,6 +130,27 @@ Important expectations:
 - Tests must not rely on `multiprocessing.Queue.empty()` for correctness. Use timeout-based `get()` or fake/recording queues instead.
 - CloseMarker drain, control-plane ACKs, backpressure, reject counters, partial delivery, runtime warning JSON Lines/fallback files, shutdown report JSON, delivery status snapshots, and bounded shutdown warning paths are covered by MP tests.
 
+## Example Documentation Policy
+
+When an example markdown file (`examples/*.md`) adds or changes an executable code block that represents a supported user workflow, update the matching `tests/examples/test_*.py` file in the same change. Existing example tests passing is not sufficient when the changed code path is new.
+
+Checklist for reviewers:
+
+- Does `examples/*.md` have a new or changed code block?
+- If yes, is the corresponding `tests/examples/test_*.py` updated?
+- If the code block is illustrative only (not a runnable workflow), is that marked with `<!-- example-test: docs-only; <reason> -->`?
+
+The `<!-- example-test: ... -->` marker format uses the following pattern for future automated checking:
+
+```python
+# re.compile(
+#     r'<!--\s*example-test:\s*'
+#     r'(?P<target>docs-only|[\w/.\-]+\.py(?:::[\w]+)?)'
+#     r'(?:\s*;\s*(?P<reason>.+?))?'
+#     r'\s*-->'
+# )
+```
+
 ## Type Validation
 
 `D-SafeLogger` ships with `py.typed` (PEP 561), so source typing and public type completeness are part of the standard quality gate. CI runs `mypy`, `pyright`, a typing smoke test, and a 100% `pyright --verifytypes` gate on every push.

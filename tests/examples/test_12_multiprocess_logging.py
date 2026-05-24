@@ -27,6 +27,51 @@ def _mp_example_worker(log_ctx: BootstrapContext, worker_id: int, result_queue) 
 
 
 @pytest.mark.timeout(30)
+def test_multiprocess_console_less_observability_outputs(tmp_path, mp_state):
+    logs_dir = tmp_path / "logs"
+    logs_dir.mkdir()
+
+    spawn_ctx = multiprocessing.get_context("spawn")
+    mp.ConfigureLogger(
+        log_path=str(logs_dir),
+        pg_name="MPDemo",
+        routing_mode="daily",
+        console_out=False,
+        structured=True,
+        mp_context=spawn_ctx,
+        runtime_warning_path=str(logs_dir / "runtime-warning.jsonl"),
+        shutdown_report_path=str(logs_dir / "shutdown-report.json"),
+    )
+
+    logger = mp.GetLogger("jobs.parent")
+    logger.info("parent status probe")
+
+    # Writer processes records asynchronously; poll until accepted.
+    # CI runners (especially GitHub Actions Windows/macOS) can be slow;
+    # use a generous timeout well within the test-level @pytest.mark.timeout(30).
+    deadline = time.monotonic() + 5.0
+    status = mp.GetDeliveryStatus()
+    while status["accepted"] < 1 and time.monotonic() < deadline:
+        time.sleep(0.05)
+        status = mp.GetDeliveryStatus()
+
+    assert status["accepted"] >= 1
+    assert "writer_reject_breakdown" in status
+    assert "worker_drop_breakdown" in status
+    assert "writer_drop_breakdown" in status
+    assert status["missing_detach_clients"] == 0
+
+    # _mp_shutdown() detaches the parent and stops the Writer (which writes the
+    # shutdown report). DetachCurrentProcess() alone does NOT stop the Writer.
+    mp._mp_shutdown()
+
+    report = json.loads((logs_dir / "shutdown-report.json").read_text(encoding="utf-8"))
+    assert report["shutdown_result"] == "clean"
+    assert report["missing_detach_clients"] == 0
+    assert "warning_queue_drain_incomplete" in report
+
+
+@pytest.mark.timeout(30)
 def test_multiprocess_logging_worker_reaches_writer(tmp_path, mp_state):
     spawn_ctx = multiprocessing.get_context("spawn")
     log_ctx = mp.ConfigureLogger(

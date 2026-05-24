@@ -58,4 +58,5 @@ benchmarks/tmp/
 BENCHMARK_anomaly_*.md
 BENCHMARK_legacy_*.md
 old/
+completed/
 docs/design/old/

@@ -19,6 +19,9 @@ graft benchmarks/summary
 include benchmarks/_benchmark_report.py
 include benchmarks/update_summary.py
 
+# Pages site generation script (formal public landing page; included for reproducibility).
+include scripts/generate_pages_site.py
+
 # Selected-session raw summaries referenced by benchmarks/summary/manifest.json.
 # Required for `python benchmarks/update_summary.py --check` to pass from sdist.
 include benchmarks/results/benchmark_20260506_180018/summary.json
@@ -30,6 +33,7 @@ include benchmarks/results/benchmarks_multi_perf_20260506_190518/summary.md
 include benchmarks/results/benchmarks_multi_resilience_20260523_084326/summary.json
 include benchmarks/results/benchmarks_multi_resilience_20260523_084326/summary.md
 
+prune site
 prune .claude
 prune .github
 prune .pytest_cache

@@ -46,6 +46,9 @@ Thumbs.db
 *.log
 logs/
 
+# GitHub Pages generated site (CI artifact; not committed)
+site/
+
 # Private planning notes
 plan/
 .verify_task/

@@ -54,6 +54,7 @@ def main() -> int:
         "for_chat/",
         ".github/",
         "dist/",
+        "site/",
     )
     sdist_forbidden = (
         "plan/",
@@ -63,6 +64,7 @@ def main() -> int:
         "docs/design/old/",
         "dist/",
         "build/",
+        "site/",
     )
     wheel_required = {
         "dsafelogger/_runtime_warning.py",
@@ -98,6 +100,7 @@ def main() -> int:
         "examples/17_container_collector_coexistence.md",
         "benchmarks/_benchmark_report.py",
         "benchmarks/update_summary.py",
+        "scripts/generate_pages_site.py",
         "benchmarks/summary/index.md",
         "benchmarks/summary/manifest.json",
         "benchmarks/results/benchmark_20260506_180018/summary.json",

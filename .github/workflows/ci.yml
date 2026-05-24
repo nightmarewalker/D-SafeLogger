@@ -125,6 +125,9 @@ jobs:
       - name: Check benchmark summaries
         run: uv run python benchmarks/update_summary.py --check
 
+      - name: Check GitHub Pages landing page
+        run: uv run python scripts/generate_pages_site.py --check
+
       - name: Clean dist
         run: rm -rf dist
 

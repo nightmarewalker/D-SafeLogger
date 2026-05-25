@@ -57,7 +57,7 @@ logger = GetLogger(__name__)
 logger.info("Application started")
 ```
 
-`pg_name` はルーティング後のログファイル名の接頭辞として使われるアプリケーション名です。例: `MyApp_20260403.log`。
+`pg_name` はログファイル名の接頭辞として使われるアプリケーション名です（ここでは `MyApp.log`、daily routing を使うと `MyApp_20260403.log` になります）。
 
 標準的なテキスト出力:
 

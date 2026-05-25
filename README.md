@@ -57,7 +57,7 @@ logger = GetLogger(__name__)
 logger.info("Application started")
 ```
 
-`pg_name` is the application name used as the prefix of routed log file names, for example `MyApp_20260403.log`.
+`pg_name` is the application name used as the log file prefix (`MyApp.log` here; with daily routing this becomes `MyApp_20260403.log`).
 
 Typical text output:
 

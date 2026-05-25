@@ -244,14 +244,28 @@ D-SafeLogger は、採用済みの単一プロセス async ベンチマークで
 
 ## 互換性 / 対象外
 
+### Public API の命名
+
+D-SafeLogger の public 関数は、PEP 8 の snake_case ではなく PascalCase を意図的に
+採用しています。
+
+Python 標準の `logging` モジュール自体にも、`getLogger()`、`basicConfig()`、
+`setLoggerClass()`、`setLogRecordFactory()` のような、アンダースコアを使わない
+mixedCase API が正式 API として長く存在します。D-SafeLogger は stdlib `logging`
+互換のロガーであり、`logging.getLogger()` や `logger.info()` といった通常の
+stdlib logging 呼び出しを維持します。そのうえで、D-SafeLogger 自身が提供する
+setup/control API は `ConfigureLogger()`、`GetLogger()`、`RegisterLevel()`、
+`ReopenLogFiles()`、`SafeShutdown()` のように PascalCase に統一しています。
+
+同じ camelCase を使うと、D-SafeLogger の setup 呼び出しが隣接する stdlib logging
+API と視覚的に区別できなくなります。PascalCase にすることで、logging ドメインの
+アンダースコアなしの慣習を保ちつつ、2つの API 層を明確に分離しています。
+
 ### 0.4.0 以降への移行
 
 `register_level()` は 0.4.0 以降で `RegisterLevel()` に改名されます。これは public API
 命名を意図的に正規化するための変更です。`from dsafelogger import register_level` は
-`from dsafelogger import RegisterLevel` に更新してください。D-SafeLogger の主要な public
-関数は PascalCase を採用します。これは通常の Python 関数名に対する PEP 8 の
-snake_case 方針からは意図的に外れる設計判断であり、既存 public API の
-`ConfigureLogger()` / `GetLogger()` との一貫性を優先するための例外です。
+`from dsafelogger import RegisterLevel` に更新してください。
 
 - Python: 3.11 以上。
 - OS: Windows, macOS, Linux。

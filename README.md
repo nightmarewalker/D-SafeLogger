@@ -244,15 +244,29 @@ See [TESTING.md](TESTING.md) for details.
 
 ## Compatibility / Non-goals
 
+### Public API naming
+
+D-SafeLogger public functions intentionally use PascalCase instead of PEP 8
+snake_case.
+
+Python's stdlib `logging` module already has long-standing underscore-free
+mixedCase APIs such as `getLogger()`, `basicConfig()`, `setLoggerClass()`, and
+`setLogRecordFactory()`. D-SafeLogger is a stdlib `logging`-compatible library,
+so it preserves normal stdlib call sites such as `logging.getLogger()` and
+`logger.info()`. Its own setup/control API uses PascalCase names:
+`ConfigureLogger()`, `GetLogger()`, `RegisterLevel()`, `ReopenLogFiles()`, and
+`SafeShutdown()`.
+
+Using the same camelCase would make D-SafeLogger's setup calls visually
+indistinguishable from the stdlib logging API they sit alongside. PascalCase
+preserves the underscore-free convention of the logging domain while keeping the
+two API layers apart.
+
 ### Migration to 0.4.0 and later
 
-`register_level()` is renamed to `RegisterLevel()` in 0.4.0 and later as an intentional
-public API normalization. Update imports such as
+`register_level()` is renamed to `RegisterLevel()` in 0.4.0 and later as an
+intentional public API normalization. Update imports such as
 `from dsafelogger import register_level` to `from dsafelogger import RegisterLevel`.
-D-SafeLogger public functions intentionally use PascalCase for the primary API
-surface. This is a deliberate exception to PEP 8's normal snake_case function
-naming, kept for consistency with the existing public APIs such as
-`ConfigureLogger()` and `GetLogger()`.
 
 - Python: 3.11 or newer.
 - OS: Windows, macOS, and Linux.

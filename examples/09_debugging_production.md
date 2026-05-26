@@ -1,24 +1,57 @@
-# Debugging in Production
+# Diagnostic Debugging
 
-The most dangerous bugs are the ones you can only reproduce in production. You need to see local
-variables in the stack trace — but you absolutely cannot leak passwords, API keys, or session tokens
-into a log file. D-SafeLogger's diagnostic mode gives you full `f_locals` expansion while
-automatically masking sensitive data, and custom log levels let you add fine-grained tracing without
-affecting your existing log levels.
+D-SafeLogger's diagnostic mode is not only for production incidents. It is useful during
+development, staging, and emergency production troubleshooting.
+
+Diagnostic mode expands local variables in exception logs while masking sensitive values by variable
+name. In development, this can shorten the path from exception to root cause. In production, the
+important part is that local-variable expansion is powerful enough to expose sensitive information,
+so D-SafeLogger restricts how it can be enabled.
+
+Diagnostic mode is enabled through the environment opt-in path, not through code-level configuration
+or unowned INI files. With the default environment prefix, that variable is `D_LOG_DIAGNOSE`; if the
+application uses a custom `env_prefix`, the variable name follows that prefix.
+
+That is intentional. Code-level or configuration-file activation would make it easier to leave
+diagnostic mode enabled in production by accident.
 
 ---
 
-## The Sanctuary Pattern
+## Why Diagnostic Mode Exists
 
-Diagnostic mode is deliberately hard to enable. This is by design — it's a safety mechanism:
+Exception messages often describe the final failure, not the state that caused it. Diagnostic mode
+adds a local-variable snapshot to exception logs so you can inspect the failing state without adding
+temporary print statements or extra logging around every branch.
 
-- **A developer can't accidentally enable it in code** — there is no Python parameter for it.
-- **An INI config can't turn it on** — the setting is not recognized in config files.
-- **ONLY an operator setting `D_LOG_DIAGNOSE=1` can activate it.**
+---
 
-This prevents the single most common source of credential leaks: "debug mode left on in production."
-The operator who sets the environment variable knows exactly what they're doing, and they remove it
-as soon as the debugging session is over.
+## Development Workflow
+
+During development, diagnostic mode is useful when the exception message is not enough to understand
+the failing state.
+
+```bash
+D_LOG_DIAGNOSE=1 python debug_demo.py
+```
+
+This expands local variables in exception logs, with sensitive values masked by variable name. Use it
+while reproducing the bug locally, then turn it off when the diagnostic session is over.
+
+---
+
+## Production Safety Boundary
+
+Diagnostic mode is useful in development, but it is also powerful enough to expose sensitive local
+state. For that reason, D-SafeLogger does not allow it to be enabled through normal code-level
+configuration or unowned INI files.
+
+It is enabled through an explicit environment opt-in. With the default environment prefix, use
+`D_LOG_DIAGNOSE=1`. If the application uses a custom `env_prefix`, the variable name follows that
+prefix.
+
+This keeps production activation intentional and operator-visible, instead of allowing diagnostic
+local-variable expansion to be left on accidentally through application code or a copied
+configuration file.
 
 ---
 
@@ -106,7 +139,7 @@ In most cases, extending the default list is safer.
 
 ---
 
-## Custom Levels for Production Tracing
+## Custom Levels for Tracing
 
 Register fine-grained levels to control verbosity without code changes:
 
@@ -131,17 +164,17 @@ logger.info('Request processed')                           # visible (20 >= 20)
 logger.audit('User exported PII data')                     # visible (35 >= 20)
 ```
 
-In normal operation, TRACE is invisible. During an emergency:
+In normal operation, TRACE is invisible. During a diagnostic session:
 
 ```bash
 D_LOG_LEVEL=TRACE python app.py
 ```
 
-Now every TRACE message appears — without changing a single line of code.
+Now every TRACE message appears without changing a single line of code.
 
 ---
 
-## The Emergency Debugging Workflow
+## Emergency Production Workflow
 
 When a critical bug surfaces in production:
 
@@ -267,5 +300,5 @@ Compare the two outputs. In diagnostic mode you'll see:
 - Local variables in the stack trace for the failed `process_order` call
 - `api_key`, `password`, `session_id`, and `credit_card` all replaced with `*** MASKED ***`
 
-This is the power of D-SafeLogger's approach: maximum visibility when you need it, zero risk of
-credential leaks, and no code changes required.
+This is the power of D-SafeLogger's approach: maximum visibility when you need it, variable-name
+based masking for diagnostic locals, and no code changes required.

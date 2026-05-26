@@ -22,7 +22,7 @@ It extends the standard logging path instead of replacing it, so existing applic
 
 4. **Start in three lines, add policy through configuration.** A minimal setup is three lines. The same call sites can stay in place while configuration adds 9 routing strategies (`daily`, `hourly`, `size`, and more), JSON Lines, SHA-256 sidecars and manifests, sensitive-keyword masking, diagnostic mode, and code / INI-dict / environment deployment layers.
 
-5. **Robust and flexible multiprocess logging.** A parent-side Writer owns file output while workers submit records over IPC. Process, Pool, and ProcessPoolExecutor patterns are covered, with delivery outcomes classified instead of hidden.
+5. **Robust multiprocess file logging.** A parent-side Writer owns file writes, so workers do not open shared log files directly. Rejected, dropped, or unaccounted-for records are surfaced explicitly instead of becoming unexplained missing lines.
 
 ## When to Use It
 
@@ -212,7 +212,7 @@ Suggested reading paths:
 | 6 | [Web API Logging](examples/06_web_api_logging.md) | Request-correlated structured logs |
 | 7 | [Long-Running Service](examples/07_long_running_service.md) | Routing, retention, and archival |
 | 8 | [Compliance & Audit Logging](examples/08_compliance_audit.md) | SHA-256 integrity files and audit logs |
-| 9 | [Debugging in Production](examples/09_debugging_production.md) | Diagnostic mode and masking |
+| 9 | [Diagnostic Debugging](examples/09_debugging_production.md) | Diagnostic mode for development, staging, and production troubleshooting, with local-variable snapshots and masking |
 | 10 | [Incident Response Bundle](examples/10_incident_response_bundle.md) | Gather structured logs, diagnostics, hashes, and manifests |
 | 11 | [Async & High Throughput](examples/11_async_performance.md) | Queue-backed async logging |
 | 12 | [Multiprocess Logging](examples/12_multiprocess_logging.md) | Worker logging through a parent-side Writer |

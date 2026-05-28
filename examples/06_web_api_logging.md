@@ -46,6 +46,10 @@ Key points:
 - `myapp.db` at DEBUG with its own file keeps query noise out of the main log
 - `myapp.payment` at WARNING with its own file keeps high-value payment alerts separate
 
+> These are concrete instances of normal production isolation from
+> `24_per_module_log_control.md`: high-volume database logs and high-value
+> payment logs are separated from the main request-flow log.
+
 ## The Application Code
 
 ```python

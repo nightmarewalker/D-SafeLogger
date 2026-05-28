@@ -201,6 +201,58 @@ When a critical bug surfaces in production:
 
 ---
 
+## Redirect One Suspect Module During an Incident
+
+For the overview of all three modes including production isolation and
+development focus, see `24_per_module_log_control.md`. This section deepens
+the incident-response mode with diagnostic local-variable expansion.
+
+For a bounded production investigation, avoid turning the entire application to
+`TRACE` unless you really need to. Redirect only the suspect module to a
+dedicated incident file and enable diagnostic local-variable expansion explicitly.
+
+```bash
+export D_LOG_MODULES="myapp.checkout:TRACE:/var/log/myapp/incidents/checkout_trace.log"
+export D_LOG_DIAGNOSE=1
+python -m myapp
+```
+
+Windows PowerShell:
+
+```powershell
+$env:D_LOG_MODULES = "myapp.checkout:TRACE:C:\Logs\MyApp\incidents\checkout_trace.log"
+$env:D_LOG_DIAGNOSE = "1"
+python -m myapp
+```
+
+This keeps the main application log readable while collecting high-detail records
+and diagnostic local-variable snapshots for the suspect module.
+
+With `D_LOG_DIAGNOSE=1`, exception logs can include local-variable snapshots.
+Diagnostic local variables are masked by variable name when they match the
+built-in or custom keyword list. This makes the incident file useful as a
+focused evidence bundle, but it also means the override should be temporary
+and operator-visible.
+
+Remove both overrides after the investigation:
+
+```bash
+unset D_LOG_MODULES
+unset D_LOG_DIAGNOSE
+```
+
+PowerShell:
+
+```powershell
+Remove-Item Env:D_LOG_MODULES
+Remove-Item Env:D_LOG_DIAGNOSE
+```
+
+Keeping `TRACE`-level output enabled for high-volume modules can produce large
+files and may expose more operational detail than normal production logging.
+
+---
+
 ## Complete Runnable Example
 
 Save this as `debug_demo.py`:

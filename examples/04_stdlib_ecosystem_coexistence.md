@@ -59,6 +59,11 @@ ConfigureLogger(
 
 ## Module-Specific Routing
 
+> This is a concrete instance of normal production isolation from
+> `24_per_module_log_control.md`: a selected high-value or integration-facing
+> logger is routed to its own file while the rest of the application keeps its
+> normal logging layout.
+
 After setup:
 
 - `logging.getLogger("orders.api")` writes through the root D-SafeLogger route;

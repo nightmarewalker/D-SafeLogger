@@ -111,6 +111,10 @@ path = background_tasks.log
 | `[dsafelogger:myapp.api]` | API module only logs WARNING and above |
 | `[dsafelogger:myapp.tasks]` | Background tasks go to their own file at INFO |
 
+> This is a compact configuration-layer example of normal production isolation.
+> For a focused guide to per-module log control across production, development,
+> and incident response, see `24_per_module_log_control.md`.
+
 Load it in one line:
 
 ```python
@@ -141,7 +145,7 @@ Environment variables **always win**. The default prefix is `D_LOG`.
 | `D_LOG_CONSOLE` | Enable/disable console output | `D_LOG_CONSOLE=0` |
 | `D_LOG_COLOR` | Enable/disable colored output | `D_LOG_COLOR=0` |
 | `D_LOG_HASH` | Enable/disable integrity hashing | `D_LOG_HASH=1` |
-| `D_LOG_MODULES` | Per-module level overrides | `D_LOG_MODULES=myapp.db:TRACE,myapp.api:ERROR` |
+| `D_LOG_MODULES` | Per-module level and optional path overrides | `D_LOG_MODULES=myapp.db:TRACE,myapp.api:ERROR` |
 
 ### Docker / Kubernetes Example
 
@@ -169,6 +173,17 @@ env:
 export D_LOG_MODULES="myapp.db:TRACE"
 python -m myapp
 ```
+
+`D_LOG_MODULES` can also redirect a selected module to a dedicated file:
+
+```bash
+export D_LOG_MODULES="myapp.checkout:TRACE:/var/log/myapp/incidents/checkout_trace.log"
+python -m myapp
+```
+
+<!-- example-test: tests/examples/test_24_per_module_log_control.py -->
+
+For the full guide to per-module destinations, path resolution, Windows drive-letter paths, and incident files, see `24_per_module_log_control.md`.
 
 ## Dict Configuration
 
@@ -254,6 +269,7 @@ with different configuration.
 
 ## What's Next
 
+- **[Per-module Log Control](24_per_module_log_control.md)** — Control module-specific destinations and levels for production, development, and incident response.
 - **[Web API Logging](06_web_api_logging.md)** — See the configuration pipeline in
   action with per-module routing, JSON output, and request context.
 - **[Long-Running Service](07_long_running_service.md)** — Deep dive into all 9

@@ -20,7 +20,7 @@ It extends the standard logging path instead of replacing it, so existing applic
 
 3. **Zero runtime dependencies.** The runtime package uses only the Python standard library. No extra runtime dependency chain is added to your application.
 
-4. **Start in three lines, add policy through configuration.** A minimal setup is three lines. The same call sites can stay in place while configuration adds 9 routing strategies (`daily`, `hourly`, `size`, and more), JSON Lines, SHA-256 sidecars and manifests, sensitive-keyword masking, diagnostic mode, and code / INI-dict / environment deployment layers.
+4. **Start in three lines, add policy through configuration.** A minimal setup is three lines. The same call sites can stay in place while configuration adds per-module log levels and file destinations (usable for production isolation, development focus, and incident response), 9 routing strategies (`daily`, `hourly`, `size`, and more), JSON Lines, SHA-256 sidecars and manifests, sensitive-keyword masking, diagnostic mode, and code / INI-dict / environment deployment layers.
 
 5. **Robust multiprocess file logging.** A parent-side Writer owns file writes, so workers do not open shared log files directly. Rejected, dropped, or unaccounted-for records are surfaced explicitly instead of becoming unexplained missing lines.
 
@@ -29,6 +29,7 @@ It extends the standard logging path instead of replacing it, so existing applic
 Use D-SafeLogger when you want to keep standard `logging.getLogger()` call sites while adding:
 
 - append-only local file routing,
+- per-module log control for production isolation, development focus, and incident response,
 - environment-driven operational overrides,
 - optional SHA-256 sidecars and manifests,
 - Writer-owned multiprocess file output,
@@ -87,6 +88,8 @@ D-SafeLogger extends the standard logging path rather than replacing it: you kee
 
 That matters when an application already has stdlib logging calls, or depends on libraries that emit through `logging.getLogger()`. D-SafeLogger lets those records enter the same routing, formatting, context, integrity, async, and multiprocess Writer path without forcing a new application-wide logging API.
 
+Because the logging call sites stay stable, the operational layout can change without code changes. The same per-module routing mechanism serves three distinct goals: **in normal production**, isolate high-volume or high-value modules into dedicated files; **during development**, lower one module's level without raising verbosity application-wide; **during incident response**, redirect a suspect module to a dedicated incident file for a bounded investigation.
+
 If you already use `structlog` as a structured-logging frontend, D-SafeLogger coexists rather than replaces it. `structlog` builds the event dictionary; D-SafeLogger handles file output, routing, sidecars, masking, and operational control. See [Structlog Coexistence](examples/16_structlog_coexistence.md) for two integration patterns.
 
 ## Why Routing Instead of External Rotation?
@@ -106,7 +109,7 @@ D-SafeLogger avoids that dependency by choosing the destination at write time. I
 | Startup safety | Invalid settings, inconsistent options, and unwritable destinations fail during setup before the application starts doing real work. |
 | File safety | Routed log files are treated as append-only artifacts with an explicit lifecycle: active writing, closed routed file, optional SHA-256 sidecar, optional manifest, and downstream transfer or archive. Integrity support is for closed-file verification, not access control. |
 | Record and context safety | Context is snapshotted on the producer side at hand-off; diagnostics and Writer-side formatting use the sensitive-keyword set established at configure time. |
-| Operational control | Runtime overrides are intentionally explicit and operator-owned. Log levels, routing, hashing, and timeout behavior can be changed without rebuilding, while diagnostic local-variable expansion is limited to environment-variable opt-in and cannot be enabled by an unowned INI file. |
+| Operational control | Runtime overrides are intentionally explicit and operator-owned. Global and per-module log levels, per-module destinations, routing, hashing, and timeout behavior can be changed without rebuilding, while diagnostic local-variable expansion is limited to environment-variable opt-in and cannot be enabled by an unowned INI file. |
 | Concurrency and multiprocess safety | Cross-thread and cross-process logging paths use bounded queues, explicit timeouts, rejection/drop paths, and shutdown drain limits. The design favors hard ceilings over indefinite waiting. |
 | Delivery visibility | Abnormal delivery outcomes remain visible through `mp.GetDeliveryStatus()`, runtime warning JSON Lines, and shutdown report JSON. Even `UnexplainedLost` is preserved as an explicit state, so abnormal runs do not collapse into “the file is just shorter than expected.” |
 
@@ -188,7 +191,7 @@ Common environment overrides, using the default `D_LOG_*` prefix; the prefix is 
 - Single-process: `D_LOG_LEVEL`, `D_LOG_MODULES`, `D_LOG_CONFIG`, `D_LOG_DIAGNOSE`, `D_LOG_CONSOLE`, `D_LOG_COLOR`, `D_LOG_HASH`, `D_LOG_MANIFEST`, plus the industry-standard `NO_COLOR`, which is not affected by `env_prefix`.
 - Multiprocess (`dsafelogger.mp`): `D_LOG_IPC_LOG_TIMEOUT`, `D_LOG_IPC_LOG_QUEUE_MAXSIZE`, `D_LOG_IPC_CLIENT_QUEUE_MAXSIZE`, `D_LOG_WRITER_FLUSH_BATCH`. These tune backpressure behavior and are normally left at defaults.
 
-See [Configuration Guide](examples/02_configuration_guide.md) for INI files, dict configuration, module-specific routing, and precedence rules. For routing-mode selection, purge/archive retention, and long-running file lifecycle examples, see [Long-Running Service](examples/07_long_running_service.md).
+See [Configuration Guide](examples/02_configuration_guide.md) for INI files, dict configuration, module-specific routing, and precedence rules. For per-module destinations and levels across production, development, and incident response, see [Per-module Log Control](examples/24_per_module_log_control.md). For routing-mode selection, purge/archive retention, and long-running file lifecycle examples, see [Long-Running Service](examples/07_long_running_service.md).
 
 ## Tutorials / Examples
 
@@ -198,7 +201,7 @@ Suggested reading paths:
 - **Stdlib and ecosystem integration:** 03, 04, 15, 16, 18, 19, 20
 - **Runtime ownership and GUI:** 17, 21, 23
 - **Windows and service operations:** 05, 07, 13, 14
-- **Application patterns:** 06, 10, 11, 17
+- **Application patterns:** 06, 10, 11, 17, 24
 - **Audit and incident response:** 08, 09, 10
 - **Multiprocess logging:** 12
 
@@ -227,6 +230,7 @@ Suggested reading paths:
 | 21 | [Web Runtime Ownership](examples/21_web_runtime_ownership.md) | Logger ownership with web frameworks |
 | 22 | [Cloud Logging Coexistence](examples/22_cloud_logging_coexistence.md) | Local durable evidence alongside cloud logging platforms |
 | 23 | [GUI Logging (Qt)](examples/23_gui_logging_qt.md) | PySide6 log panel with durable file logging |
+| 24 | [Per-module Log Control](examples/24_per_module_log_control.md) | Per-module destinations and levels for production, development, and incident response |
 
 ## Benchmarks
 

@@ -3886,7 +3886,7 @@ Public validation procedures:
 - `BENCHMARK.md` is an interpretation of manual editing and will not be regenerated from benchmark runner
 #### 7.10.5 Status at time of publication
 Pre-publication review record (as of 2026-05-07):
-- Current release target version: `0.4.0`
+- Current release target version: `0.4.1`
 - Latest pre-release review results: **GO-with-fixes**
 - Required correction items before publication (release blockers) are listed
 Although these indicate the existence of a ``prepared release operation flow,'' this chapter does not consider this to be the ``reason for popularity,'' but only records it as the technical structure of the distribution.

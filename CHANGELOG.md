@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-06-05
+
 ### Fixed
 - `ConfigureLogger(datefmt=...)` now reaches single-process text file, console, and diagnostic formatters, matching the multiprocess text formatter path. Applications that already passed `datefmt` may see timestamp text change from the previous default-format output.
 - `structured=True` now rejects `datefmt` instead of silently ignoring it; JSON timestamp formatting remains fixed for structured output.

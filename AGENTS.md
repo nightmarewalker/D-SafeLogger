@@ -8,7 +8,7 @@ This guide gives AI agents the current project context, quality gates, and bench
 
 ## Current Release Status
 
-- Current target release: `0.4.0`
+- Current target release: `0.4.1`
 - Current import name: `dsafelogger`
 - Latest pre-publish review status (2026-05-07): **GO-with-fixes**, with v23j follow-up fixes applied locally.
 - Resolved release blockers:
@@ -229,7 +229,7 @@ Use this checklist when updating the package version and pushing a release branc
 
 ## 現在のリリース状態
 
-- 現在の公開対象バージョン: `0.4.0`
+- 現在の公開対象バージョン: `0.4.1`
 - 現在の import 名: `dsafelogger`
 - 最新の公開前レビュー結果（2026-05-07）: **GO-with-fixes**。v23j の follow-up fixes は local に反映済み。
 - 解消済み release blockers:

@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypedDict
 
-from dsafelogger._constants import BUILTIN_SENSITIVE_KEYWORDS
+from dsafelogger._constants import BUILTIN_SENSITIVE_KEYWORDS, DEFAULT_FMT
 from dsafelogger._transport import Transport, TransportFactory
 
 
@@ -44,6 +44,7 @@ class ResolvedConfig:
     color_stream: bool
     module_configs: dict[str, dict]
     color_overrides: dict[str, str]
+    datefmt: str | None = None
     sensitive_keywords: frozenset[str] = BUILTIN_SENSITIVE_KEYWORDS
 
 
@@ -118,6 +119,7 @@ class PipelineBuilder:
     def build(self, config: ResolvedConfig) -> Pipeline:
         """Assemble a Pipeline from configuration."""
         from dsafelogger._formatter import (
+            ConsoleDecoratingFormatter,
             DiagnosticFormatter,
             DiagnosticStructuredFormatter,
             DSafeFormatter,
@@ -159,6 +161,8 @@ class PipelineBuilder:
                     if config.diagnose else StructuredFormatter()
                 )
             else:
+                if config.datefmt is not None:
+                    file_fmt_val.setdefault('datefmt', config.datefmt)
                 file_formatter = (
                     DiagnosticFormatter(
                         **file_fmt_val,
@@ -172,27 +176,40 @@ class PipelineBuilder:
         # Console handler
         if config.console:
             from dsafelogger._color import ColorStreamHandler
-            console_handler = ColorStreamHandler(
-                stream=sys.stderr,
-                color_enabled=config.color_stream,
-                color_overrides=config.color_overrides if config.color_overrides else None,
-            )
+            console_color_enabled = config.color_stream
             if isinstance(config.console_fmt, logging.Formatter):
                 console_formatter = config.console_fmt
             else:
                 console_fmt_val = self._parse_fmt(config.console_fmt)
                 if console_fmt_val.get('fmt') == 'json':
+                    console_color_enabled = False
                     console_formatter = (
                         DiagnosticStructuredFormatter(sensitive_keywords=sensitive_keywords)
                         if config.diagnose else StructuredFormatter()
                     )
                 else:
-                    console_formatter = (
-                        DiagnosticFormatter(
-                            **console_fmt_val,
-                            sensitive_keywords=sensitive_keywords,
-                        ) if config.diagnose else DSafeFormatter(**console_fmt_val)
-                    )
+                    if config.datefmt is not None:
+                        console_fmt_val.setdefault('datefmt', config.datefmt)
+                    if (
+                        config.color_stream
+                        and not config.diagnose
+                        and console_fmt_val.get('fmt') == DEFAULT_FMT
+                    ):
+                        console_formatter = ConsoleDecoratingFormatter(
+                            datefmt=console_fmt_val.get('datefmt')
+                        )
+                    else:
+                        console_formatter = (
+                            DiagnosticFormatter(
+                                **console_fmt_val,
+                                sensitive_keywords=sensitive_keywords,
+                            ) if config.diagnose else DSafeFormatter(**console_fmt_val)
+                        )
+            console_handler = ColorStreamHandler(
+                stream=sys.stderr,
+                color_enabled=console_color_enabled,
+                color_overrides=config.color_overrides if config.color_overrides else None,
+            )
             console_handler.setFormatter(console_formatter)
             handlers.append(console_handler)
 

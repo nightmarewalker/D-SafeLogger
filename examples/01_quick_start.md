@@ -18,10 +18,26 @@ logger = GetLogger(__name__)
 logger.info('Application started')
 ```
 
-Output:
+Console output:
 
-```
+```text
 2026-04-03 09:15:22.738 [INF][app.py:4:<module>] Application started
+```
+
+The file name and line number are illustrative; your actual output uses the file and line where you run the snippet.
+
+On a compatible TTY, console output is color-aware. Level labels are highlighted, metadata is shown with low-noise decoration, and the message text remains plain by default. The log file remains plain text.
+
+Check the file output:
+
+```bash
+cat ./logs/MyApp.log
+```
+
+PowerShell users can also use:
+
+```powershell
+Get-Content .\logs\MyApp.log
 ```
 
 Let's break that down:
@@ -75,6 +91,8 @@ and notebooks.
 
 ## Understanding the Output Format
 
+The file names and line numbers below are examples; your output reflects the actual call site.
+
 ```
 ┌─── Date ────┐ ┌── Time ──────┐ ┌Lvl┐┌── Source Location ──┐ ┌── Message ──┐
 2026-04-03      09:15:22.738     [INF] [app.py:4:<module>]     Application started
@@ -97,7 +115,12 @@ Save this as `quickstart.py` and run it:
 from dsafelogger import ConfigureLogger, GetLogger
 
 # Initialize: logs go to ./logs/ with daily rotation
-ConfigureLogger(log_path='./logs', pg_name='QuickStart', routing_mode='daily')
+ConfigureLogger(
+    log_path='./logs',
+    pg_name='QuickStart',
+    routing_mode='daily',
+    default_level='DEBUG',
+)
 
 logger = GetLogger(__name__)
 
@@ -113,7 +136,7 @@ print('\n✓ Check the ./logs/ directory for your log files.')
 
 Expected output (console):
 
-```
+```text
 2026-04-03 09:15:22.738 [DBG][quickstart.py:11:<module>] Loaded 142 configuration entries from cache
 2026-04-03 09:15:22.739 [INF][quickstart.py:12:<module>] Server started on port 8080
 2026-04-03 09:15:22.739 [WAR][quickstart.py:13:<module>] TLS certificate expires in 7 days
@@ -121,7 +144,16 @@ Expected output (console):
 2026-04-03 09:15:22.740 [CRI][quickstart.py:15:<module>] Failed over to read-only mode
 ```
 
-The same entries are written to a date-stamped file inside `./logs/`.
+In a compatible terminal, the console adds level and metadata color decoration. The message text remains plain by default, and the same entries are written to a date-stamped plain-text file inside `./logs/`.
+
+Because this example enables daily routing, inspect the routed files with the bundled CLI:
+
+```bash
+dsafelogger ls ./logs
+dsafelogger tail -f ./logs QuickStart -n 20
+```
+
+For more CLI workflows, see [CLI Operations](14_cli_operations.md).
 
 ## What's Next
 

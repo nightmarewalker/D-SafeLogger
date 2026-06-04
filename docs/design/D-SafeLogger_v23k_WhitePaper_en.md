@@ -634,6 +634,7 @@ State transitions defined by Design Document §9.2:
 | Class | Role |
 |---|---|
 | `DSafeFormatter` | Text output (default format). Compatible with all styles of `%` / `{}` / `$` |
+| `ConsoleDecoratingFormatter` | Single-process built-in console text output only. When color is enabled, decorates timestamp / source location / context suffix with low-noise ANSI while leaving message text plain by default |
 | `StructuredFormatter` | JSON Lines output. `contextualize()` Information to top level field |
 | `DiagnosticFormatter` | Text output when `diagnose=True`. Expand `f_locals` |
 | `DiagnosticStructuredFormatter` | `diagnose=True` and `structured=True`. `f_locals` to JSON `locals` field |
@@ -644,6 +645,7 @@ Default format string:
 
 - Date and time format: `%Y-%m-%d %H:%M:%S`
 - Level abbreviations: `DBG` / `INF` / `WAR` / `ERR` / `CRI` (and `RegisterLevel()` registered custom level)
+- `datefmt` is propagated to text formatters. Structured JSON timestamps remain fixed for schema stability, and `structured=True` with `datefmt` fails fast.
 #### 2.4.4 Non-destructive handling of LogRecord
 Design document §9.7 and detailed design document §4 are specified as mandatory implementation patterns.
 > The same instance of `logging.LogRecord` is shared among all handlers. If Formatter or Handler directly rewrites attributes such as `record.levelname` or `record.msg`, destructive side effects will propagate to subsequent handlers.
@@ -746,6 +748,8 @@ Detailed design document §12 stipulates.
 - `_ds_required = False` (best-effort sink).
 - ANSI color codes are assigned to abbreviated display level values.
 - Do not modify `record.levelname` directly (comply with §9.7 Non-destructive handling).
+- Metadata decoration for single-process built-in console text output is handled by `ConsoleDecoratingFormatter`, which weakly decorates timestamp / source / context. Message text remains plain by default.
+- Structured JSON console output disables level color as well, keeping JSON Lines ANSI-free even when console color is enabled.
 - For Windows, enable VT100 with `os.system("")` during initialization.
 - `COLOR_MAP` also integrates `RegisterLevel()` registered custom level color as an instance variable.
 - Color control priority (§4.5):
@@ -3868,7 +3872,7 @@ Facts that can be confirmed from `pyproject.toml` and `MANIFEST.in`:
 - Operation guide: `TESTING.md` / `BENCHMARK.md` / `CONTRIBUTING.md` / `CHANGELOG.md`
 #### 7.10.3 Quality Gate
 `TESTING.md` and public validation procedures:
-- v23k local validation on Python 3.14.3 / Windows: **727 passed, 3 skipped** (730 collected, `uv run pytest tests -v`)
+- v23k local validation on Python 3.14.3 / Windows: **749 passed, 3 skipped** (752 collected, `uv run pytest tests -v`)
 - The skipped count is platform-dependent because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
 - Coverage: terminal total **87%**, XML line-rate **89.17%**, branch-rate **82.02%**
 - multiprocess tests / OTel/structlog coexistence tests are included in the official quality gate
@@ -3936,7 +3940,7 @@ The observed facts referenced in this chapter can be summarized as follows. This
 7. **International-market perspective**: Trend in early adoption of PEP 703 / Supply chain regulatory requirements such as Executive Order 14028 / Large-scale microservice configuration. examples / README English, Apache 2.0, zero dependencies are supported.
 8. **The design purpose is clearly not “wide dissemination”**: §1 of the design document declares that the “top priority is to operate as a common foundation for the D ecosystem rather than to pursue wide adoption.” This reflects a design stance that prioritizes fit for organizations with specific operational requirements.
 9. **Document operations that actively specify failure boundaries**: Threat Model of `examples/08_compliance_audit.md` / Writer does not guarantee of `examples/12_multiprocess_logging.md` / What Not To Claim of `BENCHMARK.md` / HMAC out-of-scope declaration in design document §7.6.7 / remote aggregation out-of-scope declaration in design document §11.2. These are consistent with the operational stance of ``preventing misuse due to excessive expectations.''
-10. **Quality gate transparency**: 727 passed / 3 skipped on Python 3.14.3 / Windows (730 collected), coverage 87% terminal, free-threaded build test procedure, internal synchronization verification by `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`, benchmark session fixation by `benchmarks/summary/manifest.json`. The skipped count can vary by OS. These are recorded as observable quality indicators when evaluating candidate libraries for introduction.
+10. **Quality gate transparency**: 749 passed / 3 skipped on Python 3.14.3 / Windows (752 collected), coverage 87% terminal, free-threaded build test procedure, internal synchronization verification by `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`, benchmark session fixation by `benchmarks/summary/manifest.json`. The skipped count can vary by OS. These are recorded as observable quality indicators when evaluating candidate libraries for introduction.
 11. **Clear distribution structure**: The wheel contains runtime package files only and includes `py.typed`. The sdist includes docs / examples / tests / benchmark summaries / selected benchmark summaries for public validation and reproducibility. Private planning materials and temporary working files are excluded.
 12. **Relationship with competitors is not competition but separation of responsibilities**: structlog (front end) / OTel (emission) / Loguru (DX replacement) / picologging (speed differentiation) / logfire (SaaS) / Eliot (causal) have different responsibility axes and coexist or run in parallel with this library. Popularity indicators such as Loguru's 23.9k stars are a context independent of comparison of design dimensions.
 ---
@@ -4132,7 +4136,7 @@ Boundaries that public bench analysis actively enumerates:
 | API | `docs/api/dsafelogger*.md` | Automatically generated |
 | Operation | `TESTING.md` / `BENCHMARK.md` / `CONTRIBUTING.md` / `CHANGELOG.md` | — |
 #### 8.7.2 Quality Gate
-- Official test baseline: 727 passed / 3 skipped (730 collected, `uv run pytest tests -v`, Python 3.14.3 / Windows). The skipped count can vary by OS because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
+- Official test baseline: 749 passed / 3 skipped (752 collected, `uv run pytest tests -v`, Python 3.14.3 / Windows). The skipped count can vary by OS because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.
 - Coverage: terminal total 87%, XML line-rate 89.17%, branch-rate 82.02%
 - multiprocess tests / OTel/structlog coexistence tests are included in the official quality gate
 - Type validation: public validation includes `mypy src`, `pyright src`, `pyright tests/typing_smoke`, and a 100% `pyright --verifytypes dsafelogger --ignoreexternal` completeness gate against the built wheel
@@ -4170,7 +4174,7 @@ Based on the observed facts in this report as a whole, we have summarized the ob
 8. **Multiprocess raw throughput is led by stdlib logging**: In `root_p8`, D-SafeLogger reaches 63-75% of stdlib throughput. `BENCHMARK.md` states this clearly as a design tradeoff reflecting fixed costs in the specification (IPC + Writer dispatch). The multiprocess value of this library is not raw throughput, but delivery-state observability.
 9. **Classifies and explains 12/12 rows in the multiprocess resilience profile**: stdlib / loguru rows are marked with `observability_gap`. Delivery-state explainability is recorded as observability specific to this library.
 #### 8.8.5 Documentation/quality operations
-10. **Quality gate and internal synchronization verification scripts are in place**: 727 passed / 3 skipped on Python 3.14.3 / Windows (730 collected), coverage 87%, `mypy` / `pyright` / typing smoke / `pyright --verifytypes` 100% completeness gate, internal synchronization verification by `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`, public representative session fixation by `benchmarks/summary/manifest.json`. The skipped count can vary by OS. These are recorded as observable quality indicators when evaluating candidate libraries for introduction.
+10. **Quality gate and internal synchronization verification scripts are in place**: 749 passed / 3 skipped on Python 3.14.3 / Windows (752 collected), coverage 87%, `mypy` / `pyright` / typing smoke / `pyright --verifytypes` 100% completeness gate, internal synchronization verification by `scripts/check_design_docs_sync.py` and `scripts/generate_api_docs.py --check`, public representative session fixation by `benchmarks/summary/manifest.json`. The skipped count can vary by OS. These are recorded as observable quality indicators when evaluating candidate libraries for introduction.
 ---
 
 ### 8.9 Summary of this chapter

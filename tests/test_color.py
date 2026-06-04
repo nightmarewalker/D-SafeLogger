@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import io
+import json
 import logging
 import sys
 
 import pytest
-from dsafelogger import RegisterLevel
+from dsafelogger import ConfigureLogger, GetLogger, RegisterLevel, _shutdown
 from dsafelogger._color import ColorStreamHandler
-from dsafelogger._formatter import DSafeFormatter
+from dsafelogger._formatter import ConsoleDecoratingFormatter, DSafeFormatter
 
 
 def _make_record(level: int = logging.INFO) -> logging.LogRecord:
@@ -265,3 +266,115 @@ class TestLevelnameNonLeakage:
 
         assert record.levelname == original_levelname
         assert stream.getvalue().count('\033[32mINF\033[0m') == 2
+
+
+class TestConsoleDecoratingFormatter:
+    """Metadata decoration for D-SafeLogger-owned console text output."""
+
+    def test_timestamp_source_and_context_are_decorated(self):
+        formatter = ConsoleDecoratingFormatter()
+        record = _make_record(logging.INFO)
+        record._ds_context = {'request_id': 'abc-123'}
+
+        output = formatter.format(record)
+
+        assert output.startswith('\033[2m')
+        assert '\033[0m [INF]\033[2m[test.py:1:None]\033[0m ' in output
+        assert output.endswith('test message\033[2;36m [request_id:abc-123]\033[0m')
+        assert record.levelname == 'INFO'
+
+    def test_message_remains_plain_for_error(self):
+        formatter = ConsoleDecoratingFormatter()
+        record = _make_record(logging.ERROR)
+        record.msg = 'ERROR message stays plain [not:context]'
+
+        output = formatter.format(record)
+        message = output.rsplit('\033[0m ', 1)[1]
+
+        assert message == 'ERROR message stays plain [not:context]'
+        assert '\033[' not in message
+
+    def test_level_color_reset_does_not_break_metadata_decoration(self):
+        stream = io.StringIO()
+        handler = ColorStreamHandler(stream=stream, color_enabled=True)
+        handler.setFormatter(ConsoleDecoratingFormatter())
+
+        handler.emit(_make_record(logging.INFO))
+        output = stream.getvalue()
+
+        assert output.startswith('\033[2m')
+        assert '[\033[32mINF\033[0m]' in output
+        assert ']\033[2m[test.py:1:None]\033[0m test message' in output
+
+
+class TestConsoleColorPipelineSelection:
+    def test_color_enabled_default_console_uses_metadata_decoration(self, tmp_path, clean_env, monkeypatch, capsys):
+        monkeypatch.setenv('D_LOG_COLOR', '1')
+        ConfigureLogger(log_path=str(tmp_path), pg_name='ColorMeta')
+
+        GetLogger(__name__).info('pipeline metadata color')
+        _shutdown()
+
+        output = capsys.readouterr().err
+        assert output.startswith('\033[2m')
+        assert '[\033[32mINF\033[0m]' in output
+        assert '\033[2m[test_color.py:' in output
+        assert output.rstrip().endswith('pipeline metadata color')
+
+    def test_color_disabled_default_console_has_no_metadata_decoration(self, tmp_path, clean_env, monkeypatch, capsys):
+        monkeypatch.setenv('D_LOG_COLOR', '0')
+        ConfigureLogger(log_path=str(tmp_path), pg_name='NoColorMeta')
+
+        GetLogger(__name__).info('plain console')
+        _shutdown()
+
+        output = capsys.readouterr().err
+        assert '\033[' not in output
+        assert 'plain console' in output
+
+    def test_file_output_stays_ansi_free_when_console_is_colored(self, tmp_path, clean_env, monkeypatch, capsys):
+        monkeypatch.setenv('D_LOG_COLOR', '1')
+        ConfigureLogger(log_path=str(tmp_path), pg_name='FilePlain')
+
+        GetLogger(__name__).error('file stays plain')
+        _shutdown()
+        capsys.readouterr()
+
+        output = (tmp_path / 'FilePlain.log').read_text(encoding='utf-8')
+        assert '\033[' not in output
+        assert '[ERR]' in output
+        assert 'file stays plain' in output
+
+    def test_structured_console_and_file_stay_ansi_free(self, tmp_path, clean_env, monkeypatch, capsys):
+        monkeypatch.setenv('D_LOG_COLOR', '1')
+        ConfigureLogger(
+            log_path=str(tmp_path),
+            pg_name='JsonPlain',
+            structured=True,
+        )
+
+        GetLogger(__name__).info('json stays plain')
+        _shutdown()
+
+        console_output = capsys.readouterr().err
+        file_output = (tmp_path / 'JsonPlain.log').read_text(encoding='utf-8')
+
+        assert '\033[' not in console_output
+        assert '\033[' not in file_output
+        assert json.loads(console_output)['level'] == 'INF'
+        assert json.loads(file_output)['level'] == 'INF'
+
+    def test_custom_console_formatter_is_not_metadata_decorated(self, tmp_path, clean_env, monkeypatch, capsys):
+        monkeypatch.setenv('D_LOG_COLOR', '1')
+        ConfigureLogger(
+            log_path=str(tmp_path),
+            pg_name='CustomConsole',
+            console_fmt='%(levelname)s:%(message)s',
+        )
+
+        GetLogger(__name__).warning('custom format')
+        _shutdown()
+
+        output = capsys.readouterr().err
+        assert '\033[2m' not in output
+        assert '\033[33mWAR\033[0m:custom format' in output

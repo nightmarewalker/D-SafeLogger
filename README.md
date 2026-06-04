@@ -49,6 +49,8 @@ D-SafeLogger requires Python 3.11 or newer.
 
 ## Quick Start
 
+Save this as `quickstart.py`:
+
 ```python
 from dsafelogger import ConfigureLogger, GetLogger
 
@@ -60,10 +62,30 @@ logger.info("Application started")
 
 `pg_name` is the application name used as the log file prefix (`MyApp.log` here; with daily routing this becomes `MyApp_20260403.log`).
 
-Typical text output:
+Run it:
+
+```bash
+python quickstart.py
+```
+
+Console output:
 
 ```text
-2026-04-03 09:15:22.738 [INF][app.py:6:<module>] Application started
+2026-04-03 09:15:22.738 [INF][quickstart.py:6:<module>] Application started
+```
+
+In an actual compatible terminal, console output is color-aware: the level is highlighted and metadata is shown with low-noise decoration. File output remains plain text and never receives ANSI color codes. Set `D_LOG_COLOR=0` or the standard `NO_COLOR` environment variable to disable console colors.
+
+Check the file output:
+
+```bash
+cat ./logs/MyApp.log
+```
+
+The file contains a plain-text line like:
+
+```text
+2026-04-03 09:15:22.738 [INF][quickstart.py:6:<module>] Application started
 ```
 
 To emit JSON Lines instead, set `structured=True` at configure time:
@@ -77,6 +99,15 @@ logger.info("Application started")
 ```jsonl
 {"timestamp":"2026-04-03 09:15:22.738","level":"INF","logger":"__main__","message":"Application started"}
 ```
+
+If you later enable routing, use the bundled CLI to inspect routed files:
+
+```bash
+dsafelogger ls ./logs
+dsafelogger tail -f ./logs MyApp
+```
+
+`dsafelogger tail -f` follows D-SafeLogger's routed file naming and can switch to the next file when routing creates it. See [CLI Operations](examples/14_cli_operations.md) for listing, live tailing, and configuration scaffolding.
 
 For multiprocess setup, see [Multiprocess Logging](#multiprocess-logging). For INI configuration, request context, integrity sidecars, async logging, and CLI usage, see [Tutorials / Examples](#tutorials--examples).
 

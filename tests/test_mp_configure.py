@@ -218,6 +218,25 @@ class TestMpConfigureLogger:
                 fmt=MyCustomFormatter(),
             )
 
+    def test_structured_with_datefmt_raises(self, tmp_path, mp_state):
+        with pytest.raises(ValueError, match='datefmt'):
+            mp.ConfigureLogger(
+                log_path=str(tmp_path),
+                console_out=False,
+                structured=True,
+                datefmt='%H:%M:%S',
+            )
+
+    def test_datefmt_reaches_writer_text_formatter(self, tmp_path, mp_state):
+        mp.ConfigureLogger(
+            log_path=str(tmp_path),
+            console_out=False,
+            datefmt='%H:%M:%S',
+        )
+
+        formatter = mp._mp_writer_runtime._sink_groups['root'][0].formatter
+        assert formatter.datefmt == '%H:%M:%S'
+
     @pytest.mark.parametrize('fmt_arg', [
         logging.Formatter('%(message)s'),
         DSafeFormatter(fmt='%(message)s'),

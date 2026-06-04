@@ -626,12 +626,15 @@ The following unified format is output by default for both files and console (wh
 * **Date and time format**: ISO8601-like `%Y-%m-%d %H:%M:%S`
 * **Level name abbreviation**: In addition to the built-in `DBG`, `INF`, `WAR`, `ERR`, `CRI`, the 3-character abbreviation of the custom level registered with `RegisterLevel()` is also output in the same format.
 * **Contextualize information**: Added to the end of the message in the format `[task_id:42 worker:db_sync]` (described later in the specification).
+* **Console color**: For D-SafeLogger-owned single-process built-in console text output, when color is enabled, timestamp / source location / context suffix are decorated with low-noise ANSI in addition to level color. Message text is not decorated by default. File output and JSON Lines output remain ANSI-free.
 
 ### 6.2. Custom log format override settings (fmt / datefmt)
 You can arbitrarily override the default format by passing strings to the `fmt` and `datefmt` arguments of `ConfigureLogger`.
 
 * **fmt (str | None)**: Corresponds to the first argument of `logging.Formatter`. Log message format including `%(message)s` etc.
 * **datefmt (str | None)**: Corresponds to the second argument of `logging.Formatter`. Date and time format applied to `%(asctime)s`.
+
+`datefmt` applies to text formatters (`DSafeFormatter` / `DiagnosticFormatter`) and is propagated to single-process `ConfigureLogger()` and multiprocess `mp.ConfigureLogger()` text file / console output. The JSON timestamp produced by `StructuredFormatter` / `DiagnosticStructuredFormatter` remains fixed to `DEFAULT_DATEFMT` for schema stability, and specifying `structured=True` together with `datefmt` raises `ValueError`.
 
 In the detailed design and implementation, advanced customization (such as style selection) is also allowed by passing an **instance** of `logging.Formatter` or a subclass directly to the `fmt` argument.
 
@@ -669,6 +672,7 @@ By specifying `structured: bool = False` for `ConfigureLogger`, it is possible t
 Structured logging and Append-Only architecture are **completely orthogonal**, so the underlying file management layer (I/O layer), such as routing and generation management, operates as is without any changes (the output is just replaced with JSON).
 `structured=True`, the context information given with `contextualize()` is output as a top-level field of the JSON object, not as a suffix at the end of the message.
 Simultaneous specification of this function (`structured=True`) and custom format (character string specification for `fmt` / `file_fmt` / `console_fmt` parameters, and all cases of Formatter instance specification) will cause `ValueError` to be sent as an exclusive specification violation.
+Specifying `structured=True` together with `datefmt` is also an exclusive specification violation and raises `ValueError`. JSON Lines timestamps are ANSI-free for both file and console output; even when console color is enabled, ANSI codes must not be inserted into JSON fields.
 
 ---
 
@@ -1108,6 +1112,7 @@ If `manifest_path` is specified, the writability of that directory is also verif
 ### 9.6. Designing console color output and explicit output to stderr
 * Specify the default destination of console output as **`sys.stderr`**.
 * **[Implementation policy]**: ANSI color codes are assigned to abbreviated display level values. Coloring is resolved using the same local mapping/display proxy route as `DSafeFormatter` and does not directly change `record.levelname`. For Windows, include hacks such as enabling VT100 with `os.system("")` during initialization. The color code specified when registering the custom level is also automatically reflected (see §9.9).
+* **Metadata decoration**: For single-process `ConfigureLogger()` built-in console text output, when color is enabled, `ConsoleDecoratingFormatter` decorates timestamp / source location / context suffix with weak colors. Level severity color remains the responsibility of `ColorStreamHandler`. Metadata decoration is not applied to `diagnose=True`, structured JSON, user-owned `logging.Formatter`, or non-default custom `console_fmt` output.
 * **Color palette settings**: The built-in 5-level color palette can be changed using `color_{lowercase_abbreviation}` keys in the `[global]` section of the INI file or config_dict (see §5.3). The value specifies the numerical part of the ANSI SGR parameter (e.g. `36`, `1;31`, `38;5;208`). Custom level colors can also be overwritten using the same naming convention. This setting is supported only in the second layer (INI/dictionary), and settings from environment variables and arguments are intentionally not supported. The color palette merge order is: (1) built-in default → (2) color specified by `RegisterLevel()` → (3) `color_{abbreviation}` key in INI/dictionary (final override).
 
 ### 9.7. Non-destructive handling of LogRecord (Formatter / Handler implementation guidelines)

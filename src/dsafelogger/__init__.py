@@ -686,6 +686,7 @@ def _do_configure(
         color_stream=color_enabled,
         module_configs=merged_modules,
         color_overrides=color_overrides,
+        datefmt=args_config['datefmt'],
         sensitive_keywords=_resolved_sensitive_keywords,
     )
 

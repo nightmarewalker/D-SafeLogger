@@ -17,7 +17,7 @@ import logging
 import sys
 import threading
 import traceback
-from typing import Any, Literal
+from typing import Any, Literal, Mapping, cast
 
 from dsafelogger._constants import (
     DEFAULT_DATEFMT,
@@ -35,6 +35,15 @@ _DSAFE_INTERNAL_FIELDS = frozenset({
     '_ds_context', '_ds_exc_text', '_ds_diag_frames',
     '_ds_route',  # v23f: mp routing field; must not appear in structured JSON output
 })
+_ANSI_RESET = '\033[0m'
+_ANSI_DIM = '\033[2m'
+_ANSI_DIM_CYAN = '\033[2;36m'
+_CONSOLE_DECORATED_DEFAULT_FMT = (
+    f'{_ANSI_DIM}%(asctime)s.%(msecs)03d{_ANSI_RESET} '
+    f'[%(levelname)-3s]'
+    f'{_ANSI_DIM}[%(filename)s:%(lineno)s:%(funcName)s]{_ANSI_RESET} '
+    '%(message)s'
+)
 
 
 class _DisplayRecordProxy(logging.LogRecord):
@@ -110,6 +119,19 @@ def _extract_structured_extra_fields(record: logging.LogRecord) -> dict[str, Any
     return extra_fields
 
 
+def _get_record_context(record: logging.LogRecord) -> Mapping[str, Any]:
+    if hasattr(record, '_ds_context'):
+        return cast(Mapping[str, Any], getattr(record, '_ds_context'))
+    return get_context()
+
+
+def _make_context_suffix(ctx: Mapping[str, Any]) -> str:
+    if not ctx:
+        return ''
+    suffix = ' '.join(f'{k}:{v}' for k, v in ctx.items())
+    return f' [{suffix}]'
+
+
 class DSafeFormatter(logging.Formatter):
     """Standard D-SafeLogger formatter with level abbreviation and context suffix."""
 
@@ -149,20 +171,25 @@ class DSafeFormatter(logging.Formatter):
         proxy.__dict__['levelname'] = abbr
         result: str = super().format(proxy)
 
-        # Append context suffix.
-        # If _ds_context attribute is present (set by async prepare() or sync emit()),
-        # treat it as authoritative regardless of whether it is empty.
-        # Fall back to get_context() only when the attribute is absent (direct
-        # logging.Handler path without D-SafeLogger transport).
-        if hasattr(record, '_ds_context'):
-            ctx = getattr(record, '_ds_context')
-        else:
-            ctx = get_context()
-        if ctx:
-            suffix = ' '.join(f'{k}:{v}' for k, v in ctx.items())
-            result += f' [{suffix}]'
+        result += self._format_context_suffix(_get_record_context(record))
 
         return result
+
+    def _format_context_suffix(self, ctx: Mapping[str, Any]) -> str:
+        return _make_context_suffix(ctx)
+
+
+class ConsoleDecoratingFormatter(DSafeFormatter):
+    """Console text formatter with low-noise metadata ANSI decoration."""
+
+    def __init__(self, datefmt: str | None = None) -> None:
+        super().__init__(fmt=_CONSOLE_DECORATED_DEFAULT_FMT, datefmt=datefmt)
+
+    def _format_context_suffix(self, ctx: Mapping[str, Any]) -> str:
+        suffix = _make_context_suffix(ctx)
+        if not suffix:
+            return ''
+        return f'{_ANSI_DIM_CYAN}{suffix}{_ANSI_RESET}'
 
 
 class StructuredFormatter(logging.Formatter):

@@ -6,6 +6,8 @@ tooling. The `dsafelogger` command-line tool understands D-SafeLogger's file nam
 conventions and gives you three essential capabilities: scaffolding configuration,
 listing log files, and live-tailing with transparent file-switch detection.
 
+For a single fixed file, ordinary tools such as `cat` or `tail` are enough. Once routing is enabled, the bundled CLI is the safer entry point because it understands D-SafeLogger's routed file families.
+
 ## Installation
 
 The `dsafelogger` command is installed automatically with the library:

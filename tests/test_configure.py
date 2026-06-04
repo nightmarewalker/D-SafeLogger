@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import sys
 
 import pytest
 import dsafelogger
-from dsafelogger import ConfigureLogger, GetLogger
+from dsafelogger import ConfigureLogger, GetLogger, _shutdown
 from dsafelogger._logger import DSafeLogger
+
+
+_TIME_PREFIX_RE = re.compile(r'^\d{2}:\d{2}:\d{2}\.\d{3} \[INF\]')
 
 
 class TestConfigureLoggerNormal:
@@ -50,6 +54,53 @@ class TestConfigureLoggerNormal:
             isinstance(h.formatter, StructuredFormatter) for h in dsafelogger._active_pipeline.transport._target_handlers if h.formatter
         )
 
+    def test_datefmt_reaches_file_formatter(self, tmp_path, clean_env):
+        ConfigureLogger(
+            log_path=str(tmp_path),
+            pg_name='DateFmtFile',
+            console_out=False,
+            datefmt='%H:%M:%S',
+        )
+        GetLogger(__name__).info('file datefmt works')
+        _shutdown()
+
+        output = (tmp_path / 'DateFmtFile.log').read_text(encoding='utf-8')
+        assert _TIME_PREFIX_RE.match(output)
+        assert 'file datefmt works' in output
+        assert not output.startswith('20')
+
+    def test_datefmt_reaches_console_formatter(self, tmp_path, clean_env, capsys):
+        ConfigureLogger(
+            log_path=str(tmp_path),
+            pg_name='DateFmtConsole',
+            datefmt='%H:%M:%S',
+        )
+        GetLogger(__name__).info('console datefmt works')
+        _shutdown()
+
+        output = capsys.readouterr().err
+        assert _TIME_PREFIX_RE.match(output)
+        assert 'console datefmt works' in output
+        assert not output.startswith('20')
+
+    def test_datefmt_reaches_diagnostic_text_formatter(
+        self, tmp_path, clean_env, monkeypatch
+    ):
+        monkeypatch.setenv('D_LOG_DIAGNOSE', '1')
+        ConfigureLogger(
+            log_path=str(tmp_path),
+            pg_name='DateFmtDiagnostic',
+            console_out=False,
+            datefmt='%H:%M:%S',
+        )
+        GetLogger(__name__).info('diagnostic datefmt works')
+        _shutdown()
+
+        output = (tmp_path / 'DateFmtDiagnostic.log').read_text(encoding='utf-8')
+        assert _TIME_PREFIX_RE.match(output)
+        assert 'diagnostic datefmt works' in output
+        assert not output.startswith('20')
+
 
 class TestConfigureLoggerErrors:
     """UT-CL error cases."""
@@ -70,11 +121,26 @@ class TestConfigureLoggerErrors:
         with pytest.raises(ValueError, match='structured=True'):
             ConfigureLogger(structured=True, file_fmt='%(message)s', log_path=str(tmp_path))
 
+    def test_structured_with_datefmt(self, tmp_path, clean_env):
+        with pytest.raises(ValueError, match='datefmt'):
+            ConfigureLogger(
+                structured=True,
+                datefmt='%H:%M:%S',
+                log_path=str(tmp_path),
+            )
+
     def test_config_dict_structured_with_fmt(self, tmp_path, clean_env):
         with pytest.raises(ValueError, match='structured=True'):
             ConfigureLogger(
                 log_path=str(tmp_path),
                 config_dict={'global': {'structured': 'true', 'fmt': '%(message)s'}},
+            )
+
+    def test_config_dict_structured_with_datefmt(self, tmp_path, clean_env):
+        with pytest.raises(ValueError, match='datefmt'):
+            ConfigureLogger(
+                log_path=str(tmp_path),
+                config_dict={'global': {'structured': 'true', 'datefmt': '%H:%M:%S'}},
             )
 
     def test_suffix_digits_zero(self, tmp_path, clean_env):

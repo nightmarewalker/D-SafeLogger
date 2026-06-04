@@ -42,6 +42,38 @@ def test_pipeline_builder_sync(tmp_path: Path):
     assert len(pipeline.transport._target_handlers) == 2
 
 
+def test_pipeline_builder_applies_resolved_datefmt_to_text_formatters(tmp_path: Path):
+    config = ResolvedConfig(
+        pg_name='test',
+        log_dir=tmp_path,
+        file_fmt='%(asctime)s.%(msecs)03d %(message)s',
+        console_fmt='%(asctime)s.%(msecs)03d %(message)s',
+        routing_mode='none',
+        routing_kwargs={},
+        backup_count=0,
+        archive_mode=False,
+        enable_hash=False,
+        manifest_path=None,
+        encoding='utf-8',
+        diagnose=False,
+        max_level='INFO',
+        console=True,
+        is_async=False,
+        queue_size=-1,
+        log_level='DEBUG',
+        color_stream=False,
+        module_configs={},
+        color_overrides={},
+        datefmt='%H:%M:%S',
+    )
+
+    pipeline = PipelineBuilder().build(config)
+    file_handler, console_handler = pipeline.transport._target_handlers
+
+    assert file_handler.formatter.datefmt == '%H:%M:%S'
+    assert console_handler.formatter.datefmt == '%H:%M:%S'
+
+
 def test_pipeline_builder_async(tmp_path: Path):
     config = ResolvedConfig(
         pg_name='test',
@@ -74,4 +106,3 @@ def test_pipeline_builder_async(tmp_path: Path):
     # 1 handler: file (console=False)
     assert len(pipeline.transport._target_handlers) == 1
     assert pipeline.transport._queue.maxsize == 10
-

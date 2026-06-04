@@ -253,7 +253,7 @@ def _build_writer_sink_groups(
         )
         console_handler = ColorStreamHandler(
             stream=sys.stderr,
-            color_enabled=bool(args_config.get('color_stream', False)),
+            color_enabled=bool(args_config.get('color_stream', False)) and not is_structured,
             color_overrides=args_config.get('color_overrides') or None,
         )
         console_handler.setFormatter(console_formatter)

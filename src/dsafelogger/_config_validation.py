@@ -141,6 +141,10 @@ def validate_resolved_file_config(
                 raise ValueError(
                     f'{scope}: structured=True cannot be specified with {key}'
                 )
+        if config.get('datefmt') not in (None, ''):
+            raise ValueError(
+                f'{scope}: structured=True cannot be specified with datefmt'
+            )
 
     if manifest_path is not None and not enable_hash:
         raise ValueError(f'{scope}: manifest_path requires enable_hash=True')

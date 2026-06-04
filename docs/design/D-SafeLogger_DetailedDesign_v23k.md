@@ -2768,6 +2768,36 @@ def _enable_windows_vt100() -> None:
 
 `ConfigureLogger` の初期化フローで `console_out=True` かつカラー有効時に一度だけ呼び出す。
 
+### 12.4. ConsoleDecoratingFormatter
+
+通常版 `ConfigureLogger()` の built-in console text output では、カラー有効時に `ConsoleDecoratingFormatter` を選択する。責務境界は次のとおり。
+
+```text
+ColorStreamHandler:
+  - console sink
+  - level severity color
+  - record.levelname を変更しない表示用 proxy
+
+ConsoleDecoratingFormatter:
+  - built-in console text output 専用の metadata decoration
+  - timestamp / source location / context suffix を弱い色で装飾
+  - message 本文は既定で無色
+```
+
+`ConsoleDecoratingFormatter` は default format の field 指定子を ANSI で囲む方式を使い、message 本文の文字列解析には依存しない。context suffix は `DSafeFormatter` と同じ context 実値から生成し、message 本文中の bracket 文字列を context と誤認しない。
+
+適用しないケース:
+
+```text
+- color disabled (`NO_COLOR`, `{prefix}_COLOR=0`, non-TTY など)
+- structured=True / JSON Lines output
+- diagnose=True
+- user-owned logging.Formatter
+- default 以外の custom console_fmt
+```
+
+structured JSON console output では `ColorStreamHandler` の level color も無効化し、console color 有効時でも JSON Lines に ANSI code を混入させない。
+
 ---
 
 ## 13. CLI ツール (`dsafelogger`) 詳細設計

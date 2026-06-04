@@ -49,6 +49,8 @@ Python 3.11 以上が必要です。
 
 ## クイックスタート
 
+この内容を `quickstart.py` として保存します。
+
 ```python
 from dsafelogger import ConfigureLogger, GetLogger
 
@@ -60,10 +62,30 @@ logger.info("Application started")
 
 `pg_name` はログファイル名の接頭辞として使われるアプリケーション名です（ここでは `MyApp.log`、daily routing を使うと `MyApp_20260403.log` になります）。
 
-標準的なテキスト出力:
+実行します。
+
+```bash
+python quickstart.py
+```
+
+console output:
 
 ```text
-2026-04-03 09:15:22.738 [INF][app.py:6:<module>] Application started
+2026-04-03 09:15:22.738 [INF][quickstart.py:6:<module>] Application started
+```
+
+実際の対応ターミナルでは、console output は color-aware になります。ログレベルは強調表示され、日時・発生箇所などのメタ情報は低ノイズに装飾されます。file output はプレーンテキストのままで、ANSI color code は入りません。色を無効化するには `D_LOG_COLOR=0` または標準の `NO_COLOR` 環境変数を設定します。
+
+file output も確認します。
+
+```bash
+cat ./logs/MyApp.log
+```
+
+file には次のようなプレーンテキスト行が含まれます。
+
+```text
+2026-04-03 09:15:22.738 [INF][quickstart.py:6:<module>] Application started
 ```
 
 JSON Lines で出力したい場合は、初期化時に `structured=True` を指定します。
@@ -77,6 +99,15 @@ logger.info("Application started")
 ```jsonl
 {"timestamp":"2026-04-03 09:15:22.738","level":"INF","logger":"__main__","message":"Application started"}
 ```
+
+後から routing を有効化した場合は、同梱 CLI で routed file を確認できます。
+
+```bash
+dsafelogger ls ./logs
+dsafelogger tail -f ./logs MyApp
+```
+
+`dsafelogger tail -f` は D-SafeLogger の routed file 命名を理解し、routing により次のファイルが作られた場合も追従できます。ログ一覧、live tail、設定テンプレート生成の詳細は [CLI Operations](examples/14_cli_operations.md) を参照してください。
 
 マルチプロセス構成は [マルチプロセスでのログ出力](#マルチプロセスでのログ出力) を、INI 設定、リクエスト単位のコンテキスト、整合性 sidecar、非同期出力、CLI は [チュートリアル / サンプル](#チュートリアル--サンプル) を参照してください。
 

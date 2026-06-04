@@ -9,7 +9,7 @@
 
 v23k は v23j の公開前品質ゲートを維持したまま、multiprocess observability の runtime warning、shutdown report、delivery status schema を追加する。
 
-現行 v23k のローカル検証 baseline は Python 3.14.3 / Windows 上の結果であり、`727 passed, 3 skipped`（`730` collected）である。fork E2E は POSIX-only、Windows spawn E2E は Windows-only であるため、OS によって skipped 数は変動し得る。0.2.2 で追加済みの公開前品質ゲートとして、これに加えて `mypy src` / `pyright src` / `pyright tests/typing_smoke` / built wheel に対する `pyright --verifytypes dsafelogger --ignoreexternal` 100% completeness gate を実行する。
+現行 v23k のローカル検証 baseline は Python 3.14.3 / Windows 上の結果であり、`749 passed, 3 skipped`（`752` collected）である。fork E2E は POSIX-only、Windows spawn E2E は Windows-only であるため、OS によって skipped 数は変動し得る。0.2.2 で追加済みの公開前品質ゲートとして、これに加えて `mypy src` / `pyright src` / `pyright tests/typing_smoke` / built wheel に対する `pyright --verifytypes dsafelogger --ignoreexternal` 100% completeness gate を実行する。
 
 v23h から継続する動作変更は以下:
 

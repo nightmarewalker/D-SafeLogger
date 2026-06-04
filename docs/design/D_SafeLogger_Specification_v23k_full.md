@@ -635,12 +635,15 @@ ConfigureLogger(config_file='./logging.ini', config_dict={'global': {'default_le
 * **日時形式**: ISO8601 ライクな `%Y-%m-%d %H:%M:%S`
 * **レベル名略称**: ビルトインの `DBG`, `INF`, `WAR`, `ERR`, `CRI` に加え、`RegisterLevel()` で登録されたカスタムレベルの3文字略称も同一形式で出力される。
 * **Contextualize 情報**: メッセージ末尾に `[task_id:42 worker:db_sync]` の形式で付加される（仕様後述）。
+* **コンソールカラー**: D-SafeLogger が所有する通常版の built-in console text output では、カラー有効時に level に加えて timestamp / source location / context suffix を低ノイズに装飾する。message 本文は既定では装飾しない。file output と JSON Lines output は ANSI-free のままとする。
 
 ### 6.2. カスタムログフォーマットの上書き設定 (fmt / datefmt)
 `ConfigureLogger` の引数 `fmt` および `datefmt` に文字列を渡すことで、デフォルトのフォーマットを任意に上書きできる。
 
 * **fmt (str | None)**: `logging.Formatter` の第1引数に対応。`%(message)s` 等を含むログメッセージ形式。
 * **datefmt (str | None)**: `logging.Formatter` の第2引数に対応。`%(asctime)s` に適用される日時書式。
+
+`datefmt` は text formatter (`DSafeFormatter` / `DiagnosticFormatter`) の対象であり、通常版 `ConfigureLogger()` と multiprocess 版 `mp.ConfigureLogger()` の text file / console output に反映される。`StructuredFormatter` / `DiagnosticStructuredFormatter` の JSON timestamp は schema 安定性のため `DEFAULT_DATEFMT` 固定であり、`structured=True` と `datefmt` の同時指定は `ValueError` とする。
 
 なお、詳細設計・実装においては、`fmt` 引数に直接 `logging.Formatter` (またはその派生クラス) の**インスタンス**を渡すことで、標準ライブラリの全機能を活用した高度なカスタマイズ（スタイル指定など）を許容する設計とする。
 
@@ -678,6 +681,7 @@ fmt も None → デフォルトフォーマット
 構造化ログと Append-Only アーキテクチャは**完全に直交する**ため、ルーティングや世代管理等、下回りのファイル管理層（I/O層）は一切の変更なくそのまま動作する（出力が JSON に代わるだけである）。
 `structured=True` 時、`contextualize()` で付与されたコンテキスト情報は、メッセージ末尾のサフィックスではなく、JSONオブジェクトのトップレベルフィールドとして出力される。
 本機能（`structured=True`）と カスタムフォーマット（`fmt` / `file_fmt` / `console_fmt` パラメータへの文字列指定、および Formatter インスタンス指定の全ケース）の同時指定は排他指定違反として `ValueError` を送出する。
+`structured=True` と `datefmt` の同時指定も排他指定違反として `ValueError` を送出する。JSON Lines の timestamp は file / console とも ANSI-free で、console color が有効な場合でも JSON フィールドへ ANSI code を混入させない。
 
 ---
 
@@ -1116,6 +1120,7 @@ INIファイルで指定されたモジュール別の `path` についても同
 ### 9.6. コンソールカラー出力と stderr への明示的出力設計
 * コンソール出力のデフォルト先を **`sys.stderr`** と明記する。
 * **[実装方針]**: ANSI カラーコードは、略称化済みの表示用レベル値に対して付与する。色付与は `DSafeFormatter` と同じ局所マッピング / 表示用 proxy 経路で解決し、`record.levelname` を直接変更しない。Windows 向けには初期化時に `os.system("")` で VT100 を有効化する等のハックを盛り込む。カスタムレベルの登録時に指定されたカラーコードも自動的に反映される（§9.9 参照）。
+* **metadata decoration**: 通常版 `ConfigureLogger()` の built-in console text output では、カラー有効時に `ConsoleDecoratingFormatter` が timestamp / source location / context suffix を弱い色で装飾する。level severity color は引き続き `ColorStreamHandler` が担当する。`diagnose=True`、structured JSON、user-owned `logging.Formatter`、default 以外の custom `console_fmt` には metadata decoration を適用しない。
 * **カラーパレット設定**: ビルトイン5段階のカラーパレットは、INI ファイルまたは config_dict の `[global]` セクションで `color_{略称の小文字}` キーにより変更可能（§5.3 参照）。値は ANSI SGR パラメータの数値部分（例: `36`, `1;31`, `38;5;208`）を指定する。カスタムレベルのカラーも同一の命名規則で上書き可能。この設定は第2層（INI/辞書）のみで対応し、環境変数・引数からの設定は意図的に非対応とする。カラーパレットのマージ順序は: (1) ビルトインデフォルト → (2) `RegisterLevel()` 指定カラー → (3) INI/辞書の `color_{略称}` キー（最終上書き）。
 
 ### 9.7. LogRecord の非破壊取り扱い（Formatter / Handler 実装指針）

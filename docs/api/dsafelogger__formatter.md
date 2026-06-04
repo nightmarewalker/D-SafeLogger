@@ -19,6 +19,10 @@ Formatters for D-SafeLogger.
 
 Collect non-standard LogRecord attributes for structured output.
 
+### `_get_record_context(record: 'logging.LogRecord') -> 'Mapping[str, Any]'`
+
+### `_make_context_suffix(ctx: 'Mapping[str, Any]') -> 'str'`
+
 ### `_make_proxy_tls() -> 'threading.local'`
 
 Return a new threading.local for per-thread _DisplayRecordProxy reuse.
@@ -42,6 +46,10 @@ no new Python objects are allocated per call, eliminating GC pressure
 in high-throughput multi-threaded scenarios.
 
 ## Classes
+
+### `ConsoleDecoratingFormatter(datefmt: 'str | None' = None) -> 'None'`
+
+Console text formatter with low-noise metadata ANSI decoration.
 
 ### `DSafeFormatter(fmt: 'str | None' = None, datefmt: 'str | None' = None, style: "Literal['%', '{', '$']" = '%') -> 'None'`
 

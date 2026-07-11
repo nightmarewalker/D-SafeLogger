@@ -1,7 +1,7 @@
 # D-SafeLogger Delivery Status Schema (Implementation Contract)
 
 ステータス: **実装契約 (Implementation Contract)** — 計画段階の草案ではない。
-対象バージョン: v23k(0.3.0 以降)
+対象バージョン: v23m (0.3.0 以降)
 作成日: 2026-05-23
 位置づけ: マルチプロセス配送状態の counter accounting、wire protocol 拡張、observability 出力 schema を一元的に定義する。Phase 1〜6 の実装はこの文書に絶対準拠する。
 
@@ -773,4 +773,4 @@ def test_known_dropped_sum_equals_both_breakdowns_sum():
 
 | 日付 | 変更 |
 |---|---|
-| 2026-05-23 | 初版(v23k 実装契約)。Phase 0.5 完了時点。`multiprocess_observability_implementation_plan.md` v2 レビュー反映後の確定版 |
+| 2026-05-23 | 初版(v23m 実装契約)。Phase 0.5 完了時点。`multiprocess_observability_implementation_plan.md` v2 レビュー反映後の確定版 |

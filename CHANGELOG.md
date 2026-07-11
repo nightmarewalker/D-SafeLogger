@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-07-11
+
+### Added
+- Added single-process `ConfigureLogger(console_out="only")` for console-only logging without creating root or module file sinks.
+- Added `D_LOG_CONSOLE=only` and INI/config_dict `console_out = only` support for compatible console-only configurations.
+
+### Changed
+- `console_out` now accepts `True`, `False`, or the explicit literal `"only"` in the single-process API.
+- File-oriented settings now fail fast when combined with console-only mode.
+- Invalid `{prefix}_CONSOLE` environment values now fail fast instead of being silently ignored. Environment values are limited to `1`, `true`, `0`, `false`, and `only`.
+- Routing threshold validation is now performed after the 3-layer merge for file-enabled single-process configurations.
+
+### Documentation
+- Consolidated the v23k public design documents and v23k supplement files into a v23l canonical 7-file design set, then published the console-only design updates as v23m.
+
+### Verified
+- Current local validation baseline: `812 passed, 7 skipped` (`819` collected).
+- Coverage baseline: terminal total `87%`, line-rate `89.17%`, branch-rate `82.02%`.
+
 ## [0.4.1] - 2026-06-05
 
 ### Fixed

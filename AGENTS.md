@@ -8,7 +8,7 @@ This guide gives AI agents the current project context, quality gates, and bench
 
 ## Current Release Status
 
-- Current target release: `0.4.1`
+- Current target release: `0.4.2`
 - Current import name: `dsafelogger`
 - Latest pre-publish review status (2026-05-07): **GO-with-fixes**, with v23j follow-up fixes applied locally.
 - Resolved release blockers:
@@ -78,16 +78,16 @@ uv sync --group dev
 uv run pytest tests -v
 ```
 
-Current v23k local validation on Python 3.14.3 / Windows:
+Current v23m local validation on Python 3.14.3 / Windows:
 
 ```text
-749 passed, 3 skipped
+812 passed, 7 skipped
 ```
 
 Latest collection-only validation:
 
 ```text
-752 tests collected
+819 tests collected
 ```
 
 Latest coverage validation: terminal total `87%`, XML line-rate `89.17%`, XML branch-rate `82.02%` on Python 3.14.3 / Windows.
@@ -229,7 +229,7 @@ Use this checklist when updating the package version and pushing a release branc
 
 ## 現在のリリース状態
 
-- 現在の公開対象バージョン: `0.4.1`
+- 現在の公開対象バージョン: `0.4.2`
 - 現在の import 名: `dsafelogger`
 - 最新の公開前レビュー結果（2026-05-07）: **GO-with-fixes**。v23j の follow-up fixes は local に反映済み。
 - 解消済み release blockers:
@@ -299,16 +299,16 @@ uv sync --group dev
 uv run pytest tests -v
 ```
 
-現行 v23k の local validation（Python 3.14.3 / Windows）:
+現行 v23m の local validation（Python 3.14.3 / Windows）:
 
 ```text
-749 passed, 3 skipped
+812 passed, 7 skipped
 ```
 
 最新の collect-only validation:
 
 ```text
-752 tests collected
+819 tests collected
 ```
 
 最新 coverage validation: terminal total `87%`, XML line-rate `89.17%`, XML branch-rate `82.02%`（Python 3.14.3 / Windows）。

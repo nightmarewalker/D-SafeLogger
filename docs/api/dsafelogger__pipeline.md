@@ -21,6 +21,10 @@ dict(iterable) -> new dictionary initialized as if via:
 dict(**kwargs) -> new dictionary initialized with the name=value pairs
     in the keyword argument list.  For example:  dict(one=1, two=2)
 
+### `OutputMode(console_enabled: 'bool', file_enabled: 'bool') -> None`
+
+Resolved output sink selection.
+
 ### `Pipeline(transport: 'Transport', module_transports: 'dict[str, Transport]') -> 'None'`
 
 Active logging pipeline encompassing Transport and Root attach points.
@@ -41,7 +45,7 @@ Public methods:
 
 - `build(self, config: 'ResolvedConfig') -> 'Pipeline'`
 
-### `ResolvedConfig(pg_name: 'str', log_dir: 'Path', file_fmt: 'str | FormatterConfigDict | logging.Formatter', console_fmt: 'str | FormatterConfigDict | logging.Formatter', routing_mode: 'str', routing_kwargs: 'dict', backup_count: 'int', archive_mode: 'bool', enable_hash: 'bool', manifest_path: 'Path | None', encoding: 'str', diagnose: 'bool', max_level: 'str', console: 'bool', is_async: 'bool', queue_size: 'int', log_level: 'str', color_stream: 'bool', module_configs: 'dict[str, dict]', color_overrides: 'dict[str, str]', datefmt: 'str | None' = None, sensitive_keywords: 'frozenset[str]' = frozenset({'access_key', 'api_key', 'apikey', 'auth', 'cookie', 'credential', 'passwd', 'password', 'private_key', 'secret', 'session_id', 'token'})) -> None`
+### `ResolvedConfig(pg_name: 'str', log_dir: 'Path', file_fmt: 'str | FormatterConfigDict | logging.Formatter', console_fmt: 'str | FormatterConfigDict | logging.Formatter', routing_mode: 'str', routing_kwargs: 'dict', backup_count: 'int', archive_mode: 'bool', enable_hash: 'bool', manifest_path: 'Path | None', encoding: 'str', diagnose: 'bool', max_level: 'str', console: 'bool', is_async: 'bool', queue_size: 'int', log_level: 'str', color_stream: 'bool', module_configs: 'dict[str, dict]', color_overrides: 'dict[str, str]', datefmt: 'str | None' = None, sensitive_keywords: 'frozenset[str]' = frozenset({'access_key', 'api_key', 'apikey', 'auth', 'cookie', 'credential', 'passwd', 'password', 'private_key', 'secret', 'session_id', 'token'}), output_mode: 'OutputMode | None' = None) -> None`
 
 Resolved configuration holding 3-layer merged parameters.
 

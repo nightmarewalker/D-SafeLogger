@@ -8,6 +8,8 @@ Shared configuration validation for D-SafeLogger v23j.
 
 ### `_has_formatter_value(value: 'Any') -> 'bool'`
 
+### `_is_default_interval(value: 'Any') -> 'bool'`
+
 ### `is_cyclic_config(routing_mode: 'str', max_count: 'int | None') -> 'bool'`
 
 Return True when routing reuses file names cyclically.
@@ -28,9 +30,25 @@ Parse startup_interval interval to minutes and reject non-positive values.
 
 Reject string truthiness for public Python API bool arguments.
 
+### `validate_console_only_conflicts(config: 'Mapping[str, Any]', module_configs: 'Mapping[str, Mapping[str, Any]]', *, scope: 'str') -> 'None'`
+
+Reject file-oriented settings in console-only mode.
+
+### `validate_console_out_arg(value: 'object', *, scope: 'str') -> "bool | Literal['only']"`
+
+Validate public Python API console_out.
+
+Only exact True, exact False, and the explicit literal "only" are accepted.
+Integers such as 1/0 are intentionally rejected even though bool is a
+subclass of int.
+
 ### `validate_level_name(level_name: 'str', *, valid_levels: 'Iterable[str]', scope: 'str') -> 'None'`
 
 Validate a level name after custom levels are registered.
+
+### `validate_resolved_common_config(config: 'Mapping[str, Any]', *, scope: 'str', valid_levels: 'Iterable[str] | None' = None, level_key: 'str | None' = None, check_formatter_conflict: 'bool' = True) -> 'None'`
+
+Validate merged settings that are meaningful with or without file sinks.
 
 ### `validate_resolved_file_config(config: 'Mapping[str, Any]', *, scope: 'str', valid_levels: 'Iterable[str] | None' = None, level_key: 'str | None' = None, check_formatter_conflict: 'bool' = True) -> 'None'`
 

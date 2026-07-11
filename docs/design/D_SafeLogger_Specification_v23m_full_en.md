@@ -1,4 +1,4 @@
-# D-SafeLogger Basic Design Specification v23k (Capture/Transport/Sink 3-layer Architecture, Formal `dsafelogger.mp` Specification, External Log Rotation Coexistence, Fixed Control Plane/Backpressure Semantics, Vendor-Agnostic Core)
+# D-SafeLogger Basic Design Specification v23m (Capture/Transport/Sink 3-layer Architecture, Formal `dsafelogger.mp` Specification, External Log Rotation Coexistence, Fixed Control Plane/Backpressure Semantics, Vendor-Agnostic Core)
 
 ## 1. Purpose and Position of This Document
 This module is a lightweight, fast, and feature-rich logging platform shared by all projects in the Python ecosystem provided by `D`, including D-Settings, DPySide, and D-MessageRouter.
@@ -190,7 +190,7 @@ All control environment variables follow the naming convention based on `Configu
 | `{prefix}_LEVEL` | Global default level | `DEBUG`~`CRITICAL` + Registered custom level name | INI `default_level`, argument `default_level` |
 | `{prefix}_MODULES` | Module-specific level/output destination | `MOD:LEVEL[,...]` | INI module-specific section |
 | `{prefix}_DIAGNOSE` | Diagnostic mode (f_locals expansion) | Valid only for `"1"` | **Cannot be set from INI/arguments (sanctuary)** |
-| `{prefix}_CONSOLE` | Forced control of console output | `"1"/"0"`, `"true"/"false"` | INI `console_out`, argument `console_out` |
+| `{prefix}_CONSOLE` | Forced control of console/file output mode | `"1"/"true"` (file + console), `"0"/"false"` (file only), `"only"` (console only) | INI `console_out`, argument `console_out` |
 | `{prefix}_COLOR` | Forced control of color output | `"1"/"0"`, `"true"/"false"` | Override automatic detection |
 | `{prefix}_CONFIG` | Override INI file path | File path | Arguments `config_file` and `config_dict` |
 | `{prefix}_HASH` | Enabling hash generation | `"1"/"0"`, `"true"/"false"` | INI `enable_hash`, argument `enable_hash` |
@@ -265,8 +265,8 @@ Diagnostic mode (automatic expansion of local variable `f_locals` when an except
 
 ### 4.5. `{prefix}_CONSOLE` and `{prefix}_COLOR` (forced control of console output)
 
-The environment variable `{prefix}_CONSOLE` (valid values: `"1"` / `"0"` or `"true"` / `"false"`: case does not matter) overrides and controls whether log output is output to the console (standard error output).
-D This is a specification to align the direction with other parameters of the ecosystem, and even background services designed as `console_out=False` in the source code can be started by overwriting `True` only during development by setting environment variables before startup.
+The environment variable `{prefix}_CONSOLE` (valid values: `"1"` / `"true"`, `"0"` / `"false"`, and `"only"`; case-insensitive) overrides the output mode to file + console, file only, or console only.
+This specification aligns with other ecosystem parameters, and even background services designed as `console_out=False` in source code can be started as file + console only during development by setting environment variables before startup. `D_LOG_CONSOLE=only` selects single-process console-only mode; legacy boolean aliases such as `yes` / `no` / `on` / `off` raise `ValueError` for this variable so file-sink creation is not ambiguous.
 
 It also supports a function that interprets the environment variable `{prefix}_COLOR` (valid values: `"1"` / `"0"` or `"true"` / `"false"`: case does not matter) and the industry standard `NO_COLOR` environment variable and forcibly controls the enable/disable of ANSI color output.
 
@@ -448,7 +448,7 @@ One-to-one correspondence with ConfigureLogger arguments. `config_file` itself i
 | `max_lines` | `max_lines` | int | |
 | `max_count` | `max_count` | int or omitted | If omitted/empty value is None (upper limit reached error mode) |
 | `suffix_digits` | `suffix_digits` | int | |
-| `console_out` | `console_out` | bool | In addition to `true`/`false`, `1`/`0`/`yes`/`no`/`on`/`off` are also allowed |
+| `console_out` | `console_out` | bool or `"only"` | In addition to `true`/`false`, `1`/`0`/`yes`/`no`/`on`/`off` and `only` are allowed. `only` selects single-process console-only mode |
 | `structured` | `structured` | bool | In addition to `true`/`false`, `1`/`0`/`yes`/`no`/`on`/`off` are also allowed |
 | `fmt` | `fmt` | str | No escaping required because `interpolation=None` |
 | `file_fmt` | `file_fmt` | str | v20 added. Custom format exclusively for file output. Takes precedence over `fmt`. If omitted, falls back to `fmt` |
@@ -475,7 +475,7 @@ One-to-one correspondence with ConfigureLogger arguments. `config_file` itself i
 
 **Custom level name validation**: The `default_level` and `level` keys in the module-specific section accept custom level names registered with `RegisterLevel()` in addition to the built-in 5 levels. If an unregistered level name is specified, `ValueError` is sent (Fail-Fast).
 
-**v23j: unified post-merge validation**: After Python API arguments, INI/config_dict, and environment variables are merged, the final file-sink configuration is validated again with the same rules. `structured=True` combined with `fmt` / `file_fmt` / `console_fmt`, unregistered `default_level`, `backup_count < 0`, `max_count < 1`, `suffix_digits < 1`, and `startup_interval` with `interval < 1` are `ValueError` regardless of where they were specified. Python API bool arguments (`is_async`, `archive_mode`, `console_out`, `structured`, `enable_hash`, `sens_kws_replace`) accept only actual `bool` values; string truthiness/falsiness is not interpreted at the API layer.
+**v23m: unified post-merge validation**: After Python API arguments, INI/config_dict, and environment variables are merged, the final configuration is validated again with the same rules. `structured=True` combined with `fmt` / `file_fmt` / `console_fmt`, unregistered `default_level`, `backup_count < 0`, `max_count < 1`, `suffix_digits < 1`, and `startup_interval` with `interval < 1` are `ValueError` regardless of where they were specified. Python API bool arguments (`is_async`, `archive_mode`, `structured`, `enable_hash`, `sens_kws_replace`) accept only actual `bool` values; string truthiness/falsiness is not interpreted at the API layer. `console_out` accepts only exact `True`, exact `False`, or exact `"only"`; values such as `1`, `0`, `"true"`, and `"ONLY"` raise `TypeError`. Console-only final configurations reject file-sink-only settings with `ValueError`; file-enabled configurations keep the existing file-sink validation.
 
 **v23j: fail-fast invalid feature combinations**: The following combinations are `ValueError` rather than warning-based correction, because the requested feature cannot take effect or would break semantics.
 
@@ -1249,7 +1249,7 @@ def ConfigureLogger(
     max_lines: int = 0,             # threshold for count mode
     max_count: int | None = None,   # cyclic upper limit (None means overflow-error mode)
     suffix_digits: int = 3,         # number of sequence digits
-    console_out: bool = True,       # output to stderr
+    console_out: bool | Literal["only"] = True,  # True: file + stderr, False: file only, "only": stderr only
     structured: bool = False,       # emit structured logs (mutually exclusive with fmt, etc.)
     fmt: str | logging.Formatter | None = None, # format string or Formatter instance
     file_fmt: str | logging.Formatter | None = None,    # Formatter for file output only
@@ -2490,9 +2490,9 @@ Pre-publication synchronization includes coverage regeneration, API docs regener
 
 For the 0.2.2 pre-publication quality gate, CI adds type validation for the `py.typed` distribution. Source typing is checked with `mypy src` and `pyright src`, user-perspective smoke typing is checked with `pyright tests/typing_smoke`, and packaged typing is checked from the installed built wheel with `pyright --verifytypes dsafelogger --ignoreexternal` at a 100% completeness threshold. The verifytypes step uses `uv run --no-sync` so the wheel install is not replaced by the editable install before verification. The smoke-test directory is named `tests/typing_smoke/`, not `tests/typing/`, to avoid shadowing the standard-library `typing` module in spawn workers. These additions change only the public quality gate, not runtime behavior; the release-version bump is deferred until release readiness is confirmed.
 
-### v23k Multiprocess Observability Addendum
+### v23m Multiprocess Observability Addendum
 
-v23k formalizes `dsafelogger.mp` observability for console-less production environments. `mp.ConfigureLogger()` accepts `runtime_warning_path` and `shutdown_report_path`, so delivery state can be inspected through runtime-warning JSONL and shutdown-report JSON even when stderr is unavailable. `mp.GetDeliveryStatus()` and `mp.DeliveryStatus` expose Writer counters as a public API and a typed runtime snapshot.
+v23m formalizes `dsafelogger.mp` observability for console-less production environments. `mp.ConfigureLogger()` accepts `runtime_warning_path` and `shutdown_report_path`, so delivery state can be inspected through runtime-warning JSONL and shutdown-report JSON even when stderr is unavailable. `mp.GetDeliveryStatus()` and `mp.DeliveryStatus` expose Writer counters as a public API and a typed runtime snapshot.
 
 Runtime warnings use an independent sink that never routes through the application log pipeline. During normal operation workers send warning payloads to the Writer through a dedicated warning queue, and the Writer appends JSONL. If the warning queue or IPC path is unavailable, the worker writes a local fallback file named `<runtime_warning_path>.<pid>.fallback.jsonl`.
 
@@ -2501,3 +2501,15 @@ The shutdown report is written by the Writer at stop time through a same-directo
 Delivery accounting exposes `attempted`, `accepted`, `delivered`, `partial_delivered`, `known_rejected`, `known_dropped`, and `unexplained_lost` as the public contract. Detailed counters are separated into `writer_reject_breakdown`, `worker_drop_breakdown`, and `writer_drop_breakdown`; Writer-originated drops are not mixed into worker drops. `partial_delivered` is an independent terminal state, not part of `delivered` or `known_rejected`.
 
 The MP runtime wire protocol assumes Writer and workers come from the same installed package version. DETACH payloads include worker local drop summaries, and ATTACH payloads include pids for later missing-worker investigation in shutdown reports. `diagnose` remains application-record diagnostics, runtime warnings cover runtime/transport failures, and delivery status/report cover accounting snapshots and final reports.
+
+### v23m Console-only Mode Addendum
+
+v23m adds `ConfigureLogger(console_out="only")` to the single-process API. This profile builds no root or module file sinks while preserving stdlib logging integration, formatters, context propagation, console color, and async transport for CLI and local-development use.
+
+`console_out` now means `True` for file + console, `False` for file only, and `"only"` for console only. The Python API accepts only exact `True`, exact `False`, or exact `"only"`; `1`, `0`, `None`, `"true"`, and `"ONLY"` raise `TypeError`. INI/config_dict keep existing boolean aliases and add `console_out = only`. `D_LOG_CONSOLE` accepts only `1`, `true`, `0`, `false`, and `only`; other values raise `ValueError`. `D_LOG_CONSOLE=1` / `true` can override an API/INI `console_out="only"` request back to file + console output, and `D_LOG_CONSOLE=0` / `false` can override it to file-only output, so operators must treat env override as a possible intent reversal.
+
+Console-only is not an emergency switch that silently disables file-oriented settings. After the three-layer merge, file-oriented final settings such as `log_path != "."`, `pg_name != "Default"`, `file_fmt`, routing, retention, hash, manifest, or module paths raise a `ValueError` containing `console-only`. The `pg_name` check compares the final merged effective value directly with `"Default"`; no post-merge normalization is introduced.
+
+Routing threshold validation is file-sink validation and is not run during pre-merge Python API validation. File-enabled configurations still validate `routing_mode="size"` / `"count"` thresholds after merge. Console-only skips file-sink validation and path writable validation; console-only conflict validation is the sole gate for file-oriented conflicts.
+
+`ReopenLogFiles()` remains a file lifecycle API and raises `RuntimeError` in console-only mode because there are no file sinks to reopen. The no-file-sink guarantee applies only when the final merged mode is console-only and `ConfigureLogger(console_out="only")` is the first explicit initialization before any `GetLogger()` auto-fire or earlier explicit configuration. `SafeShutdown()` remains valid, including async console-only queue draining and listener stop. `dsafelogger.mp` rejects `console_out="only"` and `D_LOG_CONSOLE=only` because the multiprocess API is centered on Writer-owned file sinks and delivery-state accounting. Invalid `{prefix}_CONSOLE` values fail fast because they control whether file sinks are created; invalid `{prefix}_COLOR` / `{prefix}_HASH` values keep the previous ignore-without-override compatibility behavior.

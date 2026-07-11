@@ -26,11 +26,11 @@ uv sync --group dev
 uv run pytest tests -v
 ```
 
-Current v23k local validation on Python 3.14.3 / Windows:
+Current v23m local validation on Python 3.14.3 / Windows:
 
 ```text
-749 passed, 3 skipped
-752 collected
+812 passed, 7 skipped
+819 collected
 ```
 
 The collected test count is the baseline. The number of skipped tests is platform-dependent because fork E2E tests are POSIX-only and Windows spawn E2E tests are Windows-only.

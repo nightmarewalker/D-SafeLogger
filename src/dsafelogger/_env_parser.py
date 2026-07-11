@@ -72,7 +72,7 @@ class EnvParser:
 
     @staticmethod
     def parse_bool_env(env_value: str | None) -> bool | None:
-        """Parse boolean env var ({prefix}_CONSOLE / {prefix}_COLOR).
+        """Parse generic boolean env vars ({prefix}_COLOR / {prefix}_HASH).
 
         Returns:
             True, False, or None (don't override).
@@ -85,6 +85,29 @@ class EnvParser:
         if v in ('0', 'false'):
             return False
         return None
+
+    @staticmethod
+    def parse_console_env(env_value: str | None) -> bool | str | None:
+        """Parse {prefix}_CONSOLE value.
+
+        Unlike generic boolean env vars, invalid console values fail fast
+        because they control whether file sinks are created.
+        """
+        if env_value is None:
+            return None
+        v = env_value.strip().lower()
+        if not v:
+            return None
+        if v in ('1', 'true'):
+            return True
+        if v in ('0', 'false'):
+            return False
+        if v == 'only':
+            return 'only'
+        raise ValueError(
+            f"Invalid console env value {env_value!r}. "
+            "Expected one of: '1', 'true', '0', 'false', 'only'."
+        )
 
     @staticmethod
     def parse_config_path(env_value: str | None) -> str | None:
@@ -131,5 +154,3 @@ class EnvParser:
             return None
         v = env_value.strip()
         return v if v else None
-
-

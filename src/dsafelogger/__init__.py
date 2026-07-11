@@ -10,7 +10,7 @@ Public API:
 
 from __future__ import annotations
 
-__version__ = '0.4.1'
+__version__ = '0.4.2'
 __all__ = ['ConfigureLogger', 'GetLogger', 'ReopenLogFiles', 'SafeShutdown', 'RegisterLevel']
 
 import atexit
@@ -22,7 +22,7 @@ import sys
 import threading
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from dsafelogger._async import (
     DSafeQueueHandler,
@@ -38,7 +38,10 @@ from dsafelogger._constants import (
     VALID_ROUTING_MODES,
 )
 from dsafelogger._config_validation import (
+    validate_console_only_conflicts,
+    validate_console_out_arg,
     validate_bool_args,
+    validate_resolved_common_config,
     validate_resolved_file_config,
 )
 from dsafelogger._context import _log_context
@@ -61,6 +64,7 @@ from dsafelogger._levels import (
     register_custom_level as _register_custom_level_impl,
 )
 from dsafelogger._logger import DSafeLogger
+from dsafelogger._pipeline import OutputMode
 from dsafelogger._purge import ArchiveWorker, PurgeWorker
 from dsafelogger._routing import create_strategy
 from dsafelogger._validator import PathValidator
@@ -90,23 +94,17 @@ def _sanitize_pg_name(pg_name: str) -> str:
     return ''.join('_' if c in _PG_NAME_FORBIDDEN else c for c in pg_name)
 
 
-def _validate_routing_thresholds(
-    routing_mode: str,
-    *,
-    max_bytes: int | None,
-    max_lines: int | None,
-    scope: str,
-) -> None:
-    """Validate size/count routing thresholds after each config merge stage."""
-    if routing_mode == 'size' and (max_bytes is None or max_bytes <= 0):
-        raise ValueError(
-            f"{scope}: routing_mode='size' requires max_bytes > 0, got {max_bytes!r}"
-        )
-
-    if routing_mode == 'count' and (max_lines is None or max_lines <= 0):
-        raise ValueError(
-            f"{scope}: routing_mode='count' requires max_lines > 0, got {max_lines!r}"
-        )
+def _normalize_output_mode(console_out: object) -> OutputMode:
+    if console_out is True:
+        return OutputMode(console_enabled=True, file_enabled=True)
+    if console_out is False:
+        return OutputMode(console_enabled=False, file_enabled=True)
+    if console_out == 'only':
+        return OutputMode(console_enabled=True, file_enabled=False)
+    raise TypeError(
+        'console_out must resolve to True, False, or "only", '
+        f'got {type(console_out).__name__}'
+    )
 
 
 def _get_manifest_lock(path: Path) -> threading.Lock:
@@ -214,7 +212,7 @@ def ConfigureLogger(
     max_lines: int = 0,
     max_count: int | None = None,
     suffix_digits: int = 3,
-    console_out: bool = True,
+    console_out: bool | Literal['only'] = True,
     structured: bool = False,
     fmt: str | logging.Formatter | None = None,
     file_fmt: str | logging.Formatter | None = None,
@@ -318,7 +316,7 @@ def _do_configure(
     max_lines: int,
     max_count: int | None,
     suffix_digits: int,
-    console_out: bool,
+    console_out: bool | Literal['only'],
     structured: bool,
     fmt: str | logging.Formatter | None,
     file_fmt: str | logging.Formatter | None,
@@ -343,13 +341,13 @@ def _do_configure(
         {
             'is_async': is_async,
             'archive_mode': archive_mode,
-            'console_out': console_out,
             'structured': structured,
             'enable_hash': enable_hash,
             'sens_kws_replace': sens_kws_replace,
         },
         scope='ConfigureLogger()',
     )
+    console_out = validate_console_out_arg(console_out, scope='ConfigureLogger()')
 
     if routing_mode not in VALID_ROUTING_MODES:
         raise ValueError(
@@ -386,13 +384,6 @@ def _do_configure(
 
     if max_lines < 0:
         raise ValueError(f'max_lines must be >= 0, got {max_lines}')
-
-    _validate_routing_thresholds(
-        routing_mode,
-        max_bytes=max_bytes,
-        max_lines=max_lines,
-        scope='ConfigureLogger()',
-    )
 
     if config_file is not None and not isinstance(config_file, str):
         raise TypeError(f'config_file must be str or None, got {type(config_file).__name__}')
@@ -513,7 +504,7 @@ def _do_configure(
             if level and level.upper() not in get_valid_level_names():
                 print(
                     f'[D-SafeLogger] Warning: Invalid level {level!r} for module '
-                    f'{mod_name!r} in {env_names["modules"]}. Skipping.',
+                    f'{mod_name!r} in {env_names["modules"]}. Configuration will fail.',
                     file=sys.stderr,
                 )
 
@@ -524,7 +515,7 @@ def _do_configure(
     _diagnose_enabled = _constants._diagnose_enabled
 
     # Console
-    env_console = EnvParser.parse_bool_env(os.environ.get(env_names['console']))
+    env_console = EnvParser.parse_console_env(os.environ.get(env_names['console']))
     if env_console is not None:
         args_config['console_out'] = env_console
 
@@ -551,60 +542,79 @@ def _do_configure(
     if env_manifest is not None:
         args_config['manifest_path'] = env_manifest
 
+    output_mode = _normalize_output_mode(args_config['console_out'])
+
     # ── Step 6: Final validation on merged config ──
-    validate_resolved_file_config(
+    validate_resolved_common_config(
         args_config,
         scope='global config',
         valid_levels=get_valid_level_names(),
         level_key='default_level',
     )
 
-    # ── Step 7: Fail-Fast permission validation ──
     log_path_obj = Path(args_config['log_path'])
-    PathValidator.validate_writable(log_path_obj)
 
-    # Module paths
     merged_modules = _merge_module_configs(ini_modules, env_modules)
     for mod_name, mod_conf in merged_modules.items():
         if 'level' in mod_conf:
-            validate_resolved_file_config(
+            validate_resolved_common_config(
                 {'routing_mode': 'none', 'level': mod_conf['level']},
                 scope=f"module {mod_name!r}",
                 valid_levels=get_valid_level_names(),
                 level_key='level',
                 check_formatter_conflict=False,
             )
-        mod_path = mod_conf.get('path')
-        if mod_path:
-            validate_resolved_file_config(
-                {
-                    'level': mod_conf.get('level', args_config['default_level']),
-                    'routing_mode': mod_conf.get('routing_mode', 'none'),
-                    'interval': mod_conf.get('interval', args_config['interval']),
-                    'max_bytes': mod_conf.get('max_bytes', args_config['max_bytes']),
-                    'max_lines': mod_conf.get('max_lines', args_config['max_lines']),
-                    'max_count': mod_conf.get('max_count', args_config['max_count']),
-                    'suffix_digits': mod_conf.get('suffix_digits', args_config['suffix_digits']),
-                    'backup_count': mod_conf.get('backup_count', args_config['backup_count']),
-                    'archive_mode': mod_conf.get('archive_mode', args_config['archive_mode']),
-                    'enable_hash': args_config['enable_hash'],
-                    'manifest_path': args_config['manifest_path'],
-                },
-                scope=f"module {mod_name!r}",
-                valid_levels=get_valid_level_names(),
-                level_key='level',
-                check_formatter_conflict=False,
-            )
-            mod_path_str = str(mod_path)
-            if os.sep in mod_path_str or '/' in mod_path_str:
-                mod_dir = Path(mod_path_str).parent
-            else:
-                mod_dir = log_path_obj
-            PathValidator.validate_writable(mod_dir)
 
-    if args_config['manifest_path']:
-        manifest_dir = Path(args_config['manifest_path']).parent
-        PathValidator.validate_writable(manifest_dir)
+    if output_mode.file_enabled:
+        validate_resolved_file_config(
+            args_config,
+            scope='global config',
+            valid_levels=get_valid_level_names(),
+            level_key='default_level',
+        )
+
+        # ── Step 7: Fail-Fast permission validation ──
+        PathValidator.validate_writable(log_path_obj)
+
+        # Module paths
+        for mod_name, mod_conf in merged_modules.items():
+            mod_path = mod_conf.get('path')
+            if mod_path:
+                validate_resolved_file_config(
+                    {
+                        'level': mod_conf.get('level', args_config['default_level']),
+                        'routing_mode': mod_conf.get('routing_mode', 'none'),
+                        'interval': mod_conf.get('interval', args_config['interval']),
+                        'max_bytes': mod_conf.get('max_bytes', args_config['max_bytes']),
+                        'max_lines': mod_conf.get('max_lines', args_config['max_lines']),
+                        'max_count': mod_conf.get('max_count', args_config['max_count']),
+                        'suffix_digits': mod_conf.get('suffix_digits', args_config['suffix_digits']),
+                        'backup_count': mod_conf.get('backup_count', args_config['backup_count']),
+                        'archive_mode': mod_conf.get('archive_mode', args_config['archive_mode']),
+                        'enable_hash': args_config['enable_hash'],
+                        'manifest_path': args_config['manifest_path'],
+                    },
+                    scope=f"module {mod_name!r}",
+                    valid_levels=get_valid_level_names(),
+                    level_key='level',
+                    check_formatter_conflict=False,
+                )
+                mod_path_str = str(mod_path)
+                if os.sep in mod_path_str or '/' in mod_path_str:
+                    mod_dir = Path(mod_path_str).parent
+                else:
+                    mod_dir = log_path_obj
+                PathValidator.validate_writable(mod_dir)
+
+        if args_config['manifest_path']:
+            manifest_dir = Path(args_config['manifest_path']).parent
+            PathValidator.validate_writable(manifest_dir)
+    else:
+        validate_console_only_conflicts(
+            args_config,
+            merged_modules,
+            scope='global config',
+        )
 
     # ── Step 8: Set logger class ──
     with _lifecycle_lock:
@@ -679,7 +689,7 @@ def _do_configure(
         encoding='utf-8',
         diagnose=_constants._diagnose_enabled,
         max_level='',
-        console=args_config['console_out'],
+        console=output_mode.console_enabled,
         is_async=args_config['is_async'],
         queue_size=-1,
         log_level=args_config['default_level'],
@@ -688,6 +698,7 @@ def _do_configure(
         color_overrides=color_overrides,
         datefmt=args_config['datefmt'],
         sensitive_keywords=_resolved_sensitive_keywords,
+        output_mode=output_mode,
     )
 
     builder = PipelineBuilder()

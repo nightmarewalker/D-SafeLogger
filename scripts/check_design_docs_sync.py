@@ -14,7 +14,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DESIGN_DIR = REPO_ROOT / "docs" / "design"
 
-DEFAULT_DESIGN_VERSION = "v23k"
+DEFAULT_DESIGN_VERSION = "v23m"
 
 REQUIRED_FILE_TEMPLATES = (
     "D_SafeLogger_Specification_{version}_full.md",
@@ -24,6 +24,8 @@ REQUIRED_FILE_TEMPLATES = (
     "D-SafeLogger_{version}_WhitePaper.md",
     "D-SafeLogger_{version}_WhitePaper_en.md",
 )
+
+DELIVERY_STATUS_SCHEMA_TEMPLATE = "D-SafeLogger_DeliveryStatusSchema_{version}.md"
 
 PRIVATE_PATH_PATTERNS = (
     "plan/",
@@ -93,11 +95,22 @@ FORBIDDEN_PUBLIC_PATTERNS = (
 )
 
 
+def _uses_delivery_status_schema(version: str) -> bool:
+    prefix = "v23"
+    if not version.startswith(prefix):
+        return True
+    suffix = version[len(prefix):]
+    return suffix >= "l"
+
+
 def _required_files(version: str) -> tuple[str, ...]:
-    return tuple(
+    files = tuple(
         template.format(version=version)
         for template in REQUIRED_FILE_TEMPLATES
     )
+    if _uses_delivery_status_schema(version):
+        return files + (DELIVERY_STATUS_SCHEMA_TEMPLATE.format(version=version),)
+    return files
 
 
 def _problems(version: str) -> list[str]:

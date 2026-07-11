@@ -90,6 +90,29 @@ class TestParseBoolEnv:
         assert EnvParser.parse_bool_env('yes') is None
 
 
+class TestParseConsoleEnv:
+    """UT-EP-C: {prefix}_CONSOLE parsing."""
+
+    @pytest.mark.parametrize('value,expected', [
+        ('1', True), ('true', True), ('TRUE', True),
+        ('0', False), ('false', False), ('FALSE', False),
+        ('only', 'only'), ('ONLY', 'only'),
+    ])
+    def test_valid_values(self, value, expected):
+        assert EnvParser.parse_console_env(value) == expected
+
+    def test_none(self):
+        assert EnvParser.parse_console_env(None) is None
+
+    def test_empty_value(self):
+        assert EnvParser.parse_console_env('  ') is None
+
+    @pytest.mark.parametrize('value', ['yes', 'no', 'on', 'off', 'maybe'])
+    def test_invalid_value_raises(self, value):
+        with pytest.raises(ValueError, match='Invalid console env value'):
+            EnvParser.parse_console_env(value)
+
+
 class TestParseConfigPath:
     """UT-EP-CP: {prefix}_CONFIG parsing."""
 

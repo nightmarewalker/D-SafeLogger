@@ -109,6 +109,34 @@ dsafelogger tail -f ./logs MyApp
 
 `dsafelogger tail -f` follows D-SafeLogger's routed file naming and can switch to the next file when routing creates it. See [CLI Operations](examples/14_cli_operations.md) for listing, live tailing, and configuration scaffolding.
 
+### Console-only mode
+
+For CLI tools and local development, D-SafeLogger can run without creating file sinks:
+
+```python
+from dsafelogger import ConfigureLogger, GetLogger
+
+ConfigureLogger(console_out="only")
+logger = GetLogger(__name__)
+logger.info("hello")
+```
+
+`console_out="only"` keeps stdlib-compatible logger integration and console formatting, but it does not create root or module file sinks. File-oriented settings such as `log_path`, routing, hash sidecars, manifests, and module paths fail fast instead of being silently ignored.
+
+`ReopenLogFiles()` remains a file lifecycle API. In console-only mode it raises `RuntimeError` because there are no file sinks to reopen. `dsafelogger.mp` does not support console-only mode.
+
+Operational notes:
+
+- `D_LOG_CONSOLE` has normal environment override priority. `D_LOG_CONSOLE=1` or `true` turns a `console_out="only"` API/INI request back into file + console output; `D_LOG_CONSOLE=0` or `false` turns it into file-only output.
+- The no-file-sink guarantee applies to the final merged configuration of the first explicit initialization. If `GetLogger()` auto-fires before `ConfigureLogger(console_out="only")`, or an earlier explicit configuration already created file sinks, the later call is not the first initialization.
+- `{prefix}_CONSOLE` accepts only `1`, `true`, `0`, `false`, and `only`. Legacy boolean words such as `yes`, `no`, `on`, and `off` are invalid for this env var and fail fast, while `{prefix}_COLOR` and `{prefix}_HASH` retain their older ignore-on-invalid behavior.
+
+Console-only FAQ:
+
+- **Can an environment variable make files anyway?** Yes. `D_LOG_CONSOLE=1` / `true` or `0` / `false` overrides the API/INI request before the final mode is resolved.
+- **Can console-only be enabled after `GetLogger()` already ran?** No. A prior auto-fire or explicit initialization already owns the active pipeline.
+- **Why do `yes` and `on` fail for `D_LOG_CONSOLE`?** This variable decides whether file sinks are created, so ambiguous or legacy-only spellings are rejected instead of ignored.
+
 For multiprocess setup, see [Multiprocess Logging](#multiprocess-logging). For INI configuration, request context, integrity sidecars, async logging, and CLI usage, see [Tutorials / Examples](#tutorials--examples).
 
 Configuration is fail-fast. D-SafeLogger rejects feature combinations that cannot take effect, such as cyclic routing with hash/archive retention, `routing_mode='none'` with D-SafeLogger-owned retention, or `structured=True` with custom formatter strings.
@@ -191,7 +219,7 @@ Notes:
 - **※9** loguru's `enqueue=True` provides queued, multiprocessing-safe logging, but it is not a parent-side Writer ownership model and does not expose D-SafeLogger-style delivery-state accounting.
 - **※10** stdlib logging can be assembled into a listener/queue architecture, but this is not a packaged parent-side Writer API.
 
-**Delivery-state accounting** refers to per-record classification (`KnownRejected`, `KnownDropped`, `UnexplainedLost`, plus `partial_delivered`) exposed through `mp.GetDeliveryStatus()`, runtime warning JSON Lines, and shutdown report JSON. See [`examples/12_multiprocess_logging.md`](examples/12_multiprocess_logging.md), [`docs/design/v23k_supplements/delivery_status_schema.md`](docs/design/v23k_supplements/delivery_status_schema.md), and [BENCHMARK.md](BENCHMARK.md).
+**Delivery-state accounting** refers to per-record classification (`KnownRejected`, `KnownDropped`, `UnexplainedLost`, plus `partial_delivered`) exposed through `mp.GetDeliveryStatus()`, runtime warning JSON Lines, and shutdown report JSON. See [`examples/12_multiprocess_logging.md`](examples/12_multiprocess_logging.md), [`docs/design/D-SafeLogger_DeliveryStatusSchema_v23m.md`](docs/design/D-SafeLogger_DeliveryStatusSchema_v23m.md), and [BENCHMARK.md](BENCHMARK.md).
 
 ## Multiprocess Logging
 
@@ -319,8 +347,8 @@ For vulnerability reporting, see [SECURITY.md](SECURITY.md).
 
 For deeper architectural rationale and specification details, see:
 
-- [Architecture Analysis White Paper](docs/design/D-SafeLogger_v23k_WhitePaper_en.md)
-- [Basic Design Specification](docs/design/D_SafeLogger_Specification_v23k_full_en.md)
+- [Architecture Analysis White Paper](docs/design/D-SafeLogger_v23m_WhitePaper_en.md)
+- [Basic Design Specification](docs/design/D_SafeLogger_Specification_v23m_full_en.md)
 - [API Reference](docs/api/index.md)
 
 Japanese design documents are also available under [`docs/design/`](docs/design/).

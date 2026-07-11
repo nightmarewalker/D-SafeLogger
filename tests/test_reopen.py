@@ -134,6 +134,13 @@ class TestReopenLogFiles:
             with pytest.raises(RuntimeError, match='no file sinks'):
                 dsafelogger.ReopenLogFiles()
 
+    def test_console_only_raises_runtime_error(self, tmp_path, monkeypatch):
+        """Console-only configuration has no file sinks to reopen."""
+        monkeypatch.chdir(tmp_path)
+        dsafelogger.ConfigureLogger(console_out='only')
+        with pytest.raises(RuntimeError, match='no file sinks'):
+            dsafelogger.ReopenLogFiles()
+
     def test_routing_mode_non_none_raises_value_error(self, tmp_path):
         """UT-REOPEN-005: routing_mode='daily' raises ValueError."""
         dsafelogger.ConfigureLogger(

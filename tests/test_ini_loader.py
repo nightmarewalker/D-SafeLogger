@@ -57,6 +57,20 @@ class TestIniLoaderGlobal:
         g, _ = self._load(tmp_path, '[global]\nstructured = TRUE\n')
         assert g['structured'] is True
 
+    def test_console_out_only(self, tmp_path):
+        g, _ = self._load(tmp_path, '[global]\nconsole_out = only\n')
+        assert g['console_out'] == 'only'
+
+    @pytest.mark.parametrize('value,expected', [
+        ('yes', True),
+        ('on', True),
+        ('no', False),
+        ('off', False),
+    ])
+    def test_console_out_preserves_bool_aliases(self, tmp_path, value, expected):
+        g, _ = self._load(tmp_path, f'[global]\nconsole_out = {value}\n')
+        assert g['console_out'] is expected
+
     def test_optional_int_value(self, tmp_path):
         g, _ = self._load(tmp_path, '[global]\nmax_count = 5\n')
         assert g['max_count'] == 5

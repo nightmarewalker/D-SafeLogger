@@ -1,15 +1,15 @@
-# D-SafeLogger テスト設計 v23k
+# D-SafeLogger テスト設計 v23m
 
 作成日: 2026-04-29
-対象バージョン: v23k（multiprocess observability 追加）
+対象バージョン: v23m（multiprocess observability 追加）
 
 ---
 
 ## 概要
 
-v23k は v23j の公開前品質ゲートを維持したまま、multiprocess observability の runtime warning、shutdown report、delivery status schema を追加する。
+v23m は v23j の公開前品質ゲートを維持したまま、multiprocess observability の runtime warning、shutdown report、delivery status schema を追加する。
 
-現行 v23k のローカル検証 baseline は Python 3.14.3 / Windows 上の結果であり、`749 passed, 3 skipped`（`752` collected）である。fork E2E は POSIX-only、Windows spawn E2E は Windows-only であるため、OS によって skipped 数は変動し得る。0.2.2 で追加済みの公開前品質ゲートとして、これに加えて `mypy src` / `pyright src` / `pyright tests/typing_smoke` / built wheel に対する `pyright --verifytypes dsafelogger --ignoreexternal` 100% completeness gate を実行する。
+現行 v23m のローカル検証 baseline は Python 3.14.3 / Windows 上の結果であり、`812 passed, 7 skipped`（`819` collected）である。fork E2E は POSIX-only、Windows spawn E2E は Windows-only であるため、OS によって skipped 数は変動し得る。0.2.2 で追加済みの公開前品質ゲートとして、これに加えて `mypy src` / `pyright src` / `pyright tests/typing_smoke` / built wheel に対する `pyright --verifytypes dsafelogger --ignoreexternal` 100% completeness gate を実行する。
 
 v23h から継続する動作変更は以下:
 
@@ -173,9 +173,9 @@ v23j では benchmark 公開成果物の管理方式を変更する。runner は
 - 詳細設計 `D-SafeLogger_DetailedDesign_v23.md` §8.5 / §15a.5.5 / changelog v23h
 - inventory `D-SafeLogger_v23_baseline_diff_inventory.md` 差分 #1（v23h L4 訂正）
 
-## v23k Multiprocess Observability Test Addendum
+## v23m Multiprocess Observability Test Addendum
 
-v23k では multiprocess runtime observability の回帰を以下のテスト群で固定する。
+v23m では multiprocess runtime observability の回帰を以下のテスト群で固定する。
 
 - `tests/test_runtime_warning.py`: runtime warning JSONL schema、worker warning queue、fallback file、rate limit、non-blocking warning path、module transport coverage、warning queue drain semantics。
 - `tests/test_shutdown_report.py`: shutdown report atomic write、clean shutdown、worker crash identity、drain deadline、write failure fallback、writer-side / attempted-side invariant、breakdown source separation、partial delivery independence。
@@ -183,3 +183,50 @@ v23k では multiprocess runtime observability の回帰を以下のテスト群
 - `tests/typing_smoke/public_api_smoke.py`: `mp.DeliveryStatus` and `mp.GetDeliveryStatus()` user-facing type smoke.
 
 Quality gates: `uv run pytest tests -q`, `uv run pyright tests/typing_smoke`, `uv run mypy src`, `uv run pyright src`, and `uv run python scripts/check_type_completeness.py --min-score 100`.
+
+---
+
+## v23m Multiprocess Observability Test Matrix Integration
+
+This supplement maps the v23m multiprocess observability behavior to tests.
+
+## Runtime Warning
+
+- `tests/test_runtime_warning.py` verifies JSONL required/optional fields.
+- It verifies Writer-side warnings, worker warning queue aggregation, queue-full fallback files, and non-blocking worker warning behavior.
+- It verifies rate limiting, module transport drops, concurrent writes, and warning queue drain completion/incompletion.
+
+## Delivery Accounting
+
+- `tests/test_mp_runtime.py` verifies `attempted`, `accepted`, `delivered`, `partial_delivered`, writer reject breakdown, worker drop breakdown, writer drop breakdown, and accounting invariants.
+- It verifies sink/policy mixed failure is counted as one rejected record.
+- It verifies runtime STATUS does not classify active clients as missing-detach clients.
+
+## Shutdown Report
+
+- `tests/test_shutdown_report.py` verifies atomic write, clean shutdown report shape, missing worker identity, drain deadline result, write failure fallback, source-separated drop breakdowns, partial delivery independence, and warning queue drain reporting.
+- Shutdown report tests verify both writer-side and attempted-side invariants when `snapshot_complete` is true.
+
+## Public API
+
+- `tests/test_delivery_status_api.py` verifies `mp.GetDeliveryStatus()` before/after configure, ACK timeout propagation, active-client incomplete snapshots, sink reject reporting, partial delivery, complete snapshots after detach, and writer-side invariants.
+- `tests/typing_smoke/public_api_smoke.py` verifies the public `mp.DeliveryStatus` type from a user perspective.
+
+## Benchmark Coverage
+
+- `benchmarks/run_multiprocess_compare_v23a.py` consumes public `mp.GetDeliveryStatus()` instead of private WriterRuntime status methods.
+- Resilience summaries use `writer_reject_breakdown`, `worker_drop_breakdown`, and `writer_drop_breakdown` so `partial_delivered` remains an independent terminal state and writer-originated drops are not mixed into worker drops.
+
+---
+
+## v23m Console-only Test Addendum
+
+v23m adds regression coverage for the single-process console-only profile and the multiprocess rejection boundary.
+
+- `tests/test_configure.py` verifies `ConfigureLogger(console_out="only")`, env/config_dict console-only selection, env override back to file-enabled modes including word forms, async console-only, module level-only behavior, strict Python API type rejection, file-oriented conflict validation including cwd-like `log_path` values and `max_count`, structured formatter conflicts, generic range-error priority, invalid module levels after env merge, and invalid `{prefix}_CONSOLE` failure.
+- `tests/test_env_parser.py` verifies `parse_console_env()` accepts only `1` / `true` / `0` / `false` / `only` and rejects aliases such as `yes` / `on` / `off`.
+- `tests/test_ini_loader.py` verifies `console_out = only` and preserves existing INI/config_dict boolean aliases.
+- `tests/typing_smoke/public_api_smoke.py` verifies the public single-process signature accepts `console_out="only"` from a user's typing perspective.
+- `tests/test_pipeline.py` verifies console-only builds a transport with no file handler and no reopenable file sinks.
+- `tests/test_reopen.py` verifies `ReopenLogFiles()` raises `RuntimeError` for console-only.
+- `tests/test_mp_configure.py` verifies `mp.ConfigureLogger(console_out="only")`, `D_LOG_CONSOLE=only`, and invalid console env values are rejected.

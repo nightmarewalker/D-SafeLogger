@@ -429,6 +429,9 @@ def ConfigureLogger(
         if not env_prefix:
             raise ValueError('env_prefix must not be empty')
 
+        if console_out == 'only':
+            raise ValueError('mp.ConfigureLogger() does not support console_out="only"')
+
         validate_bool_args(
             {
                 'is_async': is_async,
@@ -722,8 +725,12 @@ def ConfigureLogger(
         env_diagnose = os.environ.get(env_names['diagnose'])
         _constants._diagnose_enabled = (env_diagnose == '1')
 
-        env_console = EnvParser.parse_bool_env(os.environ.get(env_names['console']))
+        env_console = EnvParser.parse_console_env(os.environ.get(env_names['console']))
         if env_console is not None:
+            if env_console == 'only':
+                raise ValueError(
+                    f'{env_names["console"]}=only is not supported by mp.ConfigureLogger()'
+                )
             args_config['console_out'] = env_console
 
         no_color = os.environ.get('NO_COLOR')

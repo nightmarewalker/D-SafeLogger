@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from dsafelogger._pipeline import PipelineBuilder, ResolvedConfig
+from dsafelogger._pipeline import OutputMode, PipelineBuilder, ResolvedConfig
 from dsafelogger._transport import DirectTransport, QueueTransport
 
 
@@ -106,3 +106,36 @@ def test_pipeline_builder_async(tmp_path: Path):
     # 1 handler: file (console=False)
     assert len(pipeline.transport._target_handlers) == 1
     assert pipeline.transport._queue.maxsize == 10
+
+
+def test_pipeline_builder_console_only_does_not_create_file_handler(tmp_path: Path):
+    config = ResolvedConfig(
+        pg_name='test',
+        log_dir=tmp_path,
+        file_fmt='%(message)s',
+        console_fmt='%(message)s',
+        routing_mode='none',
+        routing_kwargs={},
+        backup_count=0,
+        archive_mode=False,
+        enable_hash=False,
+        manifest_path=None,
+        encoding='utf-8',
+        diagnose=False,
+        max_level='INFO',
+        console=True,
+        is_async=False,
+        queue_size=-1,
+        log_level='DEBUG',
+        color_stream=False,
+        module_configs={},
+        color_overrides={},
+        output_mode=OutputMode(console_enabled=True, file_enabled=False),
+    )
+
+    pipeline = PipelineBuilder().build(config)
+
+    assert isinstance(pipeline.transport, DirectTransport)
+    assert len(pipeline.transport._target_handlers) == 1
+    assert pipeline.reopen_file_sinks() == 0
+    assert not (tmp_path / 'test.log').exists()

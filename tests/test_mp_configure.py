@@ -321,6 +321,20 @@ class TestMpConfigureLogger:
         with pytest.raises(TypeError, match=key):
             mp.ConfigureLogger(log_path=str(tmp_path), **{key: 'false'})  # type: ignore[arg-type]
 
+    def test_console_out_only_rejected(self, tmp_path, mp_state):
+        with pytest.raises(ValueError, match='console_out="only"'):
+            mp.ConfigureLogger(log_path=str(tmp_path), console_out='only')  # type: ignore[arg-type]
+
+    def test_env_console_only_rejected(self, tmp_path, mp_state, clean_env, monkeypatch):
+        monkeypatch.setenv('D_LOG_CONSOLE', 'only')
+        with pytest.raises(ValueError, match='not supported'):
+            mp.ConfigureLogger(log_path=str(tmp_path))
+
+    def test_env_console_invalid_rejected(self, tmp_path, mp_state, clean_env, monkeypatch):
+        monkeypatch.setenv('D_LOG_CONSOLE', 'maybe')
+        with pytest.raises(ValueError, match='Invalid console env value'):
+            mp.ConfigureLogger(log_path=str(tmp_path))
+
     def test_module_level_propagates_to_attached_logger(self, tmp_path, mp_state):
         """Module-specific level is applied on the capture side."""
         mp.ConfigureLogger(

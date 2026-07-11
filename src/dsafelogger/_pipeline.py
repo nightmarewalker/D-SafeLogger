@@ -22,6 +22,13 @@ class FormatterConfigDict(TypedDict, total=False):
 
 
 @dataclass(frozen=True)
+class OutputMode:
+    """Resolved output sink selection."""
+    console_enabled: bool
+    file_enabled: bool
+
+
+@dataclass(frozen=True)
 class ResolvedConfig:
     """Resolved configuration holding 3-layer merged parameters."""
     pg_name: str
@@ -46,6 +53,7 @@ class ResolvedConfig:
     color_overrides: dict[str, str]
     datefmt: str | None = None
     sensitive_keywords: frozenset[str] = BUILTIN_SENSITIVE_KEYWORDS
+    output_mode: OutputMode | None = None
 
 
 class Pipeline:
@@ -129,82 +137,85 @@ class PipelineBuilder:
         from dsafelogger._routing import create_strategy
 
         sensitive_keywords = config.sensitive_keywords or BUILTIN_SENSITIVE_KEYWORDS
-
-        # 1. Root strategy
-        strategy = create_strategy(
-            routing_mode=config.routing_mode,
-            base_dir=config.log_dir,
-            pg_name=config.pg_name,
-            **config.routing_kwargs,
+        output_mode = config.output_mode or OutputMode(
+            console_enabled=config.console,
+            file_enabled=True,
         )
 
-        # 2. Root sink handlers
-        handlers: list[logging.Handler] = []
-
-        file_handler = AppendOnlyFileHandler(
-            strategy=strategy,
-            backup_count=config.backup_count,
-            archive_mode=config.archive_mode,
-            enable_hash=config.enable_hash,
-            manifest_path=str(config.manifest_path) if config.manifest_path else None,
-            encoding=config.encoding,
-        )
-
-        # Formatter for file sink
-        if isinstance(config.file_fmt, logging.Formatter):
-            file_formatter = config.file_fmt
-        else:
+        def build_file_formatter() -> logging.Formatter:
+            if isinstance(config.file_fmt, logging.Formatter):
+                return config.file_fmt
             file_fmt_val = self._parse_fmt(config.file_fmt)
             if file_fmt_val.get('fmt') == 'json':
-                file_formatter = (
+                return (
                     DiagnosticStructuredFormatter(sensitive_keywords=sensitive_keywords)
                     if config.diagnose else StructuredFormatter()
                 )
-            else:
-                if config.datefmt is not None:
-                    file_fmt_val.setdefault('datefmt', config.datefmt)
-                file_formatter = (
-                    DiagnosticFormatter(
-                        **file_fmt_val,
-                        sensitive_keywords=sensitive_keywords,
-                    ) if config.diagnose else DSafeFormatter(**file_fmt_val)
-                )
+            if config.datefmt is not None:
+                file_fmt_val.setdefault('datefmt', config.datefmt)
+            return (
+                DiagnosticFormatter(
+                    **file_fmt_val,
+                    sensitive_keywords=sensitive_keywords,
+                ) if config.diagnose else DSafeFormatter(**file_fmt_val)
+            )
 
-        file_handler.setFormatter(file_formatter)
-        handlers.append(file_handler)
-
-        # Console handler
-        if config.console:
-            from dsafelogger._color import ColorStreamHandler
+        def build_console_formatter() -> tuple[logging.Formatter, bool]:
             console_color_enabled = config.color_stream
             if isinstance(config.console_fmt, logging.Formatter):
-                console_formatter = config.console_fmt
-            else:
-                console_fmt_val = self._parse_fmt(config.console_fmt)
-                if console_fmt_val.get('fmt') == 'json':
-                    console_color_enabled = False
-                    console_formatter = (
-                        DiagnosticStructuredFormatter(sensitive_keywords=sensitive_keywords)
-                        if config.diagnose else StructuredFormatter()
-                    )
-                else:
-                    if config.datefmt is not None:
-                        console_fmt_val.setdefault('datefmt', config.datefmt)
-                    if (
-                        config.color_stream
-                        and not config.diagnose
-                        and console_fmt_val.get('fmt') == DEFAULT_FMT
-                    ):
-                        console_formatter = ConsoleDecoratingFormatter(
-                            datefmt=console_fmt_val.get('datefmt')
-                        )
-                    else:
-                        console_formatter = (
-                            DiagnosticFormatter(
-                                **console_fmt_val,
-                                sensitive_keywords=sensitive_keywords,
-                            ) if config.diagnose else DSafeFormatter(**console_fmt_val)
-                        )
+                return config.console_fmt, console_color_enabled
+            console_fmt_val = self._parse_fmt(config.console_fmt)
+            if console_fmt_val.get('fmt') == 'json':
+                return (
+                    DiagnosticStructuredFormatter(sensitive_keywords=sensitive_keywords)
+                    if config.diagnose else StructuredFormatter()
+                ), False
+            if config.datefmt is not None:
+                console_fmt_val.setdefault('datefmt', config.datefmt)
+            if (
+                config.color_stream
+                and not config.diagnose
+                and console_fmt_val.get('fmt') == DEFAULT_FMT
+            ):
+                return (
+                    ConsoleDecoratingFormatter(
+                        datefmt=console_fmt_val.get('datefmt')
+                    ),
+                    console_color_enabled,
+                )
+            return (
+                DiagnosticFormatter(
+                    **console_fmt_val,
+                    sensitive_keywords=sensitive_keywords,
+                ) if config.diagnose else DSafeFormatter(**console_fmt_val),
+                console_color_enabled,
+            )
+
+        # 1. Root sink handlers
+        handlers: list[logging.Handler] = []
+
+        if output_mode.file_enabled:
+            strategy = create_strategy(
+                routing_mode=config.routing_mode,
+                base_dir=config.log_dir,
+                pg_name=config.pg_name,
+                **config.routing_kwargs,
+            )
+            file_handler = AppendOnlyFileHandler(
+                strategy=strategy,
+                backup_count=config.backup_count,
+                archive_mode=config.archive_mode,
+                enable_hash=config.enable_hash,
+                manifest_path=str(config.manifest_path) if config.manifest_path else None,
+                encoding=config.encoding,
+            )
+            file_handler.setFormatter(build_file_formatter())
+            handlers.append(file_handler)
+
+        # Console handler
+        if output_mode.console_enabled:
+            from dsafelogger._color import ColorStreamHandler
+            console_formatter, console_color_enabled = build_console_formatter()
             console_handler = ColorStreamHandler(
                 stream=sys.stderr,
                 color_enabled=console_color_enabled,
@@ -213,14 +224,20 @@ class PipelineBuilder:
             console_handler.setFormatter(console_formatter)
             handlers.append(console_handler)
 
+        if not handlers:
+            raise ValueError('at least one output sink must be enabled')
+
         for h in handlers:
             h.setLevel(logging.NOTSET)
 
-        # 3. Module transports
+        # 2. Module transports
         module_transports: dict[str, Transport] = {}
-        for mod_name, mod_conf in config.module_configs.items():
-            mod_path = mod_conf.get('path')
-            if mod_path:
+        if output_mode.file_enabled:
+            file_formatter = build_file_formatter()
+            for mod_name, mod_conf in config.module_configs.items():
+                mod_path = mod_conf.get('path')
+                if not mod_path:
+                    continue
                 mod_path_str = str(mod_path)
                 if os.sep not in mod_path_str and '/' not in mod_path_str:
                     mod_full_path = config.log_dir / mod_path_str
@@ -256,7 +273,7 @@ class PipelineBuilder:
                 )
                 module_transports[mod_name] = mod_transport
 
-        # 4. Root transport
+        # 3. Root transport
         transport = TransportFactory.create(
             is_async=config.is_async,
             handlers=handlers,

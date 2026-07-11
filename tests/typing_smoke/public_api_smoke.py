@@ -22,6 +22,12 @@ def smoke_basic_logger() -> None:
     logger.warning("warn")
 
 
+def smoke_console_only_logger() -> None:
+    ConfigureLogger(console_out="only")
+    logger = GetLogger("typing-smoke-console")
+    logger.info("console only")
+
+
 def smoke_custom_level() -> None:
     RegisterLevel("TRACE", 5, "TRC")
 

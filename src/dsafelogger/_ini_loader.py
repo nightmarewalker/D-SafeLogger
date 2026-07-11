@@ -46,7 +46,7 @@ class IniLoader:
 
     # Type categories
     BOOL_KEYS = frozenset({
-        'is_async', 'console_out', 'structured',
+        'is_async', 'structured',
         'archive_mode', 'enable_hash', 'sens_kws_replace',
     })
     INT_KEYS = frozenset({
@@ -220,6 +220,8 @@ class IniLoader:
     @classmethod
     def _convert_value(cls, key: str, raw_value: str, section: str) -> object:
         """Convert [global] section value to appropriate type."""
+        if key == 'console_out':
+            return cls._parse_console_out(key, raw_value, section)
         if key in cls.BOOL_KEYS:
             return cls._parse_bool(key, raw_value, section)
         if key in cls.INT_KEYS:
@@ -257,6 +259,20 @@ class IniLoader:
             return False
         raise ValueError(
             f"INI key '{key}' in [{section}]: expected bool, got {raw_value!r}"
+        )
+
+    @staticmethod
+    def _parse_console_out(key: str, raw_value: str, section: str) -> bool | str:
+        """Parse console_out with bool aliases plus the literal 'only'."""
+        v = raw_value.strip().lower()
+        if v in ('true', '1', 'yes', 'on'):
+            return True
+        if v in ('false', '0', 'no', 'off'):
+            return False
+        if v == 'only':
+            return 'only'
+        raise ValueError(
+            f"INI key '{key}' in [{section}]: expected bool or 'only', got {raw_value!r}"
         )
 
     @staticmethod

@@ -142,7 +142,7 @@ The resilience benchmark now reads D-SafeLogger delivery state through the publi
 
 For new resilience sessions, D-SafeLogger also enables `runtime_warning_path` and `shutdown_report_path` in the benchmark scratch directory. Runtime warnings are emitted to an independent JSON Lines sink, and shutdown reports provide an atomic final snapshot for post-run diagnosis without requiring console output. Workers that cannot reach the Writer warning IPC path fall back to per-pid local files named `<runtime_warning_path>.<pid>.fallback.jsonl`; console-less deployments should collect both the primary warning file and any fallback files.
 
-See [`docs/design/v23k_supplements/delivery_status_schema.md`](docs/design/v23k_supplements/delivery_status_schema.md) for the authoritative accounting contract.
+See [`docs/design/D-SafeLogger_DeliveryStatusSchema_v23m.md`](docs/design/D-SafeLogger_DeliveryStatusSchema_v23m.md) for the authoritative accounting contract.
 
 ## What To Claim
 

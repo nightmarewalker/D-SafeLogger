@@ -372,7 +372,7 @@ print(status["writer_drop_breakdown"])
 accepted = delivered + partial_delivered + known_rejected + writer_known_dropped + unexplained_lost
 ```
 
-For the complete schema contract, see [`docs/design/v23k_supplements/delivery_status_schema.md`](../docs/design/v23k_supplements/delivery_status_schema.md).
+For the complete schema contract, see [`docs/design/D-SafeLogger_DeliveryStatusSchema_v23m.md`](../docs/design/D-SafeLogger_DeliveryStatusSchema_v23m.md).
 
 ## 15. Behavior under backpressure
 
